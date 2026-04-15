@@ -2,13 +2,15 @@ import type { TelephonyProvider } from './index';
 
 export const vobizProvider: TelephonyProvider = {
   async initiateCall({ to, campaignId, contactId, callRecordId }) {
-    const { VOBIZ_API_KEY, VOBIZ_CALLER_ID, WEBHOOK_BASE_URL } = process.env;
+    const { VOBIZ_API_KEY, VOBIZ_AUTH_TOKEN, VOBIZ_CALLER_ID, WEBHOOK_BASE_URL } = process.env;
+
+    const creds = Buffer.from(`${VOBIZ_API_KEY}:${VOBIZ_AUTH_TOKEN}`).toString('base64');
 
     const res = await fetch('https://api.vobiz.ai/v1/Call', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${VOBIZ_API_KEY}`,
+        'Authorization': `Basic ${creds}`,
       },
       body: JSON.stringify({
         from: VOBIZ_CALLER_ID,
