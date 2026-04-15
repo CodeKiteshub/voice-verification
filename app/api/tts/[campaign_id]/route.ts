@@ -15,18 +15,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
       },
       body: JSON.stringify({
         inputs: [campaign.question],
-        target_language_code: 'hi-IN',
+        target_language_code: 'en-IN',
         speaker: 'meera',
         pitch: 0,
         pace: 1.0,
         loudness: 1.5,
-        speech_sample_rate: 8000,
+        speech_sample_rate: 16000,
         enable_preprocessing: true,
         model: 'bulbul:v1',
       }),
     });
 
-    if (!res.ok) throw new Error(`Sarvam TTS failed: ${res.status}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[TTS] Sarvam error ${res.status}: ${errText}`);
+      throw new Error(`Sarvam TTS failed: ${res.status} – ${errText}`);
+    }
     const data = await res.json();
     const audioBase64: string = data.audios?.[0] ?? '';
     if (!audioBase64) throw new Error('No audio returned');
@@ -38,8 +42,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
         'Cache-Control': 'public, max-age=86400',
       },
     });
-  } catch (err) {
-    console.error('[TTS] Error:', err);
-    return new NextResponse('TTS generation failed', { status: 502 });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    console.error('[TTS] Error:', msg);
+    return new NextResponse(`TTS failed: ${msg}`, { status: 502 });
   }
 }
