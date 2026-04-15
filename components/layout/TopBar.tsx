@@ -4,11 +4,20 @@ import { STTToggle } from '@/components/settings/STTToggle';
 import type { Provider } from '@/lib/types';
 
 export async function TopBar() {
-  await initSettings();
-  const [activeProvider, sttStr] = await Promise.all([
-    getSetting('active_provider'),
-    getSetting('stt_enabled'),
-  ]);
+  let activeProvider: string = 'exotel';
+  let sttStr: string = 'true';
+
+  try {
+    await initSettings();
+    const [p, s] = await Promise.all([
+      getSetting('active_provider'),
+      getSetting('stt_enabled'),
+    ]);
+    activeProvider = p ?? 'exotel';
+    sttStr = s ?? 'true';
+  } catch {
+    // use defaults when DB is unavailable (e.g. during build)
+  }
 
   return (
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-end gap-6 px-6">

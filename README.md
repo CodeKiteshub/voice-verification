@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# VoiceVerify — Voice Verification Platform
 
-## Getting Started
+A Next.js 14 full-stack POC for outbound voice verification campaigns. Admins upload phone numbers, trigger automated calls via Exotel or Vobiz, and review voice responses — with optional Sarvam AI transcription.
 
-First, run the development server:
+## Requirements
+
+- Node.js 18+
+- MongoDB (local or Atlas)
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.local.example .env.local
+# Edit .env.local — set MONGODB_URI, telephony credentials, Sarvam key
+```
+
+### 3. Expose local server to internet (required for telephony webhooks)
+
+Exotel and Vobiz need to POST back to your server. Use ngrok in local dev:
+
+```bash
+npx ngrok http 3000
+# Copy the https://xxxxx.ngrok.io URL
+# Set WEBHOOK_BASE_URL and NEXT_PUBLIC_BASE_URL in .env.local
+```
+
+### 4. Start dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) — redirects to the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Usage
 
-## Learn More
+1. **Campaigns → New Campaign**: enter name, question (spoken via TTS), paste phone numbers (one per line or `phone,name` CSV)
+2. **Campaign detail**: click **Start Calling** to trigger outbound calls to all contacts
+3. **Results**: live-updating call results — audio playback, transcript, intent badge, and manual intent buttons
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Feature Toggles (Top Bar)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+**Provider toggle (Exotel / Vobiz):** Switches the active telephony provider. Persisted in MongoDB.
 
-## Deploy on Vercel
+**Auto Transcribe (STT):**
+- **ON** — Sarvam AI transcribes each recording after the call completes; intent extracted via keyword matching (YES/NO/UNCLEAR)
+- **OFF** — Play recordings manually via the audio player; click YES / NO / UNCLEAR to set intent
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Manual intent buttons appear on every call card regardless of STT state (use them to correct wrong auto-intent).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+---
+
+## Architecture
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 App Router |
+| Language | TypeScript |
+| Database | MongoDB (native driver) — async, no schema setup |
+| IDs | MongoDB ObjectId (hex strings in API responses) |
+| Telephony | Exotel or Vobiz (switchable via UI) |
+| STT | Sarvam AI `saarika:v2` model |
+| Polling | SWR — Results page polls `/api/calls` every 5s |
+
+**Recording proxy:** Exotel recordings require Basic Auth — served through `/api/calls/:id/recording-proxy`. Vobiz recordings are direct public URLs.
+
+**Webhooks:** Same Next.js server handles provider callbacks at `/api/webhook/{provider}/...`. These must be reachable from the internet (use ngrok for local dev).
+
+---
+
+## Exotel Trial Note
+
+Trial accounts can only call verified numbers. Register all test phone numbers as verified callers in the Exotel dashboard before triggering calls.
+
+---
+
+## Project Structure
+
+```
+app/
+  api/             — Route handlers (settings, campaigns, calls, webhooks)
+  dashboard/       — Stats overview
+  campaigns/       — Campaign list, create, detail + trigger
+  results/         — Live call results with SWR polling
+components/
+  layout/          — Sidebar, TopBar
+  settings/        — ProviderToggle, STTToggle
+  dashboard/       — StatsGrid, RecentCallsTable
+  campaigns/       — CampaignCard, CreateCampaignForm, NumbersUploader
+  results/         — CallCard, AudioPlayer, IntentBadge, ManualIntentButtons
+lib/
+  db.ts            — MongoDB singleton + all async query functions
+  types.ts         — Shared TypeScript interfaces
+  providers/       — Exotel + Vobiz outbound call implementations
+  services/        — STT pipeline (Sarvam AI) + intent extraction
+```
