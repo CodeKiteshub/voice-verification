@@ -111,6 +111,21 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
   return toObj<Campaign>(doc);
 }
 
+export async function updateCampaign(
+  id: string,
+  data: { name?: string; question?: string; provider?: Provider; stt_enabled?: boolean }
+): Promise<Campaign | null> {
+  if (!ObjectId.isValid(id) || !Object.keys(data).length) return getCampaignById(id);
+  const c = await col('campaigns');
+  const update: Record<string, any> = {};
+  if (data.name      !== undefined) update.name       = data.name;
+  if (data.question  !== undefined) update.question   = data.question;
+  if (data.provider  !== undefined) update.provider   = data.provider;
+  if (data.stt_enabled !== undefined) update.stt_enabled = data.stt_enabled;
+  await c.updateOne({ _id: new ObjectId(id) }, { $set: update });
+  return getCampaignById(id);
+}
+
 export async function deleteCampaign(id: string): Promise<void> {
   if (!ObjectId.isValid(id)) return;
   const db = await getDb();

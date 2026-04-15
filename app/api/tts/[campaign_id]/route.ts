@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCampaignById, getSetting } from '@/lib/db';
 import { addSubtleNoise } from '@/lib/audio/noise';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ campaign_id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ campaign_id: string }> }) {
   const { campaign_id } = await params;
-  const [campaign, voice] = await Promise.all([
+  // voice_override lets the campaign page preview a voice without saving it
+  const voiceOverride = new URL(req.url).searchParams.get('voice_override');
+  const [campaign, savedVoice] = await Promise.all([
     getCampaignById(campaign_id),
-    getSetting('tts_voice'),
+    voiceOverride ? Promise.resolve(null) : getSetting('tts_voice'),
   ]);
   if (!campaign) return new NextResponse('Not found', { status: 404 });
+  const voice = voiceOverride ?? savedVoice ?? 'anushka';
 
   try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
@@ -20,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
       body: JSON.stringify({
         inputs: [campaign.question],
         target_language_code: 'en-IN',
-        speaker: voice ?? 'anushka',
+        speaker: voice,
         pitch: 0,
         pace: 1.0,
         loudness: 1.5,
@@ -43,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': voiceOverride ? 'no-store' : 'public, max-age=86400',
       },
     });
   } catch (err: any) {

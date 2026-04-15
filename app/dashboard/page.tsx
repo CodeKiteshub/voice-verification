@@ -1,7 +1,7 @@
 import { getDashboardStats, getCallRecords, getSetting, initSettings } from '@/lib/db';
 import { StatsGrid } from '@/components/dashboard/StatsGrid';
 import { RecentCallsTable } from '@/components/dashboard/RecentCallsTable';
-import { VoiceSelector } from '@/components/dashboard/VoiceSelector';
+import { VoiceSelector } from '@/components/settings/VoiceSelector';
 
 export const dynamic = 'force-dynamic';
 
