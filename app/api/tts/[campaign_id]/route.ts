@@ -45,7 +45,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ camp
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
-        // No cache for overrides (preview); long cache for real calls
+        'Content-Length': String(audioBuffer.length),
+        'Accept-Ranges': 'bytes',
         'Cache-Control': voiceOverride ? 'no-store' : 'public, max-age=86400',
       },
     });

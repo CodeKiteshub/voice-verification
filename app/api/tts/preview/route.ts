@@ -42,7 +42,9 @@ export async function GET(req: NextRequest) {
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
+        'Content-Length': String(audioBuffer.length),
         'Cache-Control': 'no-store',
+        'Accept-Ranges': 'bytes',
       },
     });
   } catch (err: any) {

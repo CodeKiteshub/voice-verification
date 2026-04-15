@@ -40,6 +40,8 @@ export async function GET() {
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
+        'Content-Length': String(audioBuffer.length),
+        'Accept-Ranges': 'bytes',
         'Cache-Control': 'public, max-age=86400',
       },
     });
