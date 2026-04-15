@@ -66,7 +66,7 @@ export async function initSettings(): Promise<void> {
 // ─── Campaigns ───────────────────────────────────────────────────────────────
 
 export async function createCampaign(data: {
-  name: string; question: string; provider: Provider; stt_enabled: boolean;
+  name: string; question: string; provider: Provider; stt_enabled: boolean; tts_voice?: string;
 }): Promise<Campaign> {
   const c = await col('campaigns');
   const doc = {
@@ -74,6 +74,7 @@ export async function createCampaign(data: {
     question: data.question,
     provider: data.provider,
     stt_enabled: data.stt_enabled,
+    tts_voice: data.tts_voice ?? 'anushka',
     status: 'draft',
     created_at: new Date().toISOString(),
   };
@@ -113,15 +114,16 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
 
 export async function updateCampaign(
   id: string,
-  data: { name?: string; question?: string; provider?: Provider; stt_enabled?: boolean }
+  data: { name?: string; question?: string; provider?: Provider; stt_enabled?: boolean; tts_voice?: string }
 ): Promise<Campaign | null> {
   if (!ObjectId.isValid(id) || !Object.keys(data).length) return getCampaignById(id);
   const c = await col('campaigns');
   const update: Record<string, any> = {};
-  if (data.name      !== undefined) update.name       = data.name;
-  if (data.question  !== undefined) update.question   = data.question;
-  if (data.provider  !== undefined) update.provider   = data.provider;
+  if (data.name        !== undefined) update.name        = data.name;
+  if (data.question    !== undefined) update.question    = data.question;
+  if (data.provider    !== undefined) update.provider    = data.provider;
   if (data.stt_enabled !== undefined) update.stt_enabled = data.stt_enabled;
+  if (data.tts_voice   !== undefined) update.tts_voice   = data.tts_voice;
   await c.updateOne({ _id: new ObjectId(id) }, { $set: update });
   return getCampaignById(id);
 }

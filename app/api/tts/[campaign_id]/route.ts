@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCampaignById, getSetting } from '@/lib/db';
+import { getCampaignById } from '@/lib/db';
 import { addSubtleNoise } from '@/lib/audio/noise';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ campaign_id: string }> }) {
   const { campaign_id } = await params;
-  // voice_override lets the campaign page preview a voice without saving it
+  // voice_override lets the campaign page preview without saving
   const voiceOverride = new URL(req.url).searchParams.get('voice_override');
-  const [campaign, savedVoice] = await Promise.all([
-    getCampaignById(campaign_id),
-    voiceOverride ? Promise.resolve(null) : getSetting('tts_voice'),
-  ]);
+
+  const campaign = await getCampaignById(campaign_id);
   if (!campaign) return new NextResponse('Not found', { status: 404 });
-  const voice = voiceOverride ?? savedVoice ?? 'anushka';
+
+  const voice = voiceOverride ?? campaign.tts_voice ?? 'anushka';
 
   try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
@@ -36,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ camp
     if (!res.ok) {
       const errText = await res.text();
       console.error(`[TTS] Sarvam error ${res.status}: ${errText}`);
-      throw new Error(`Sarvam TTS failed: ${res.status} – ${errText}`);
+      throw new Error(`Sarvam TTS failed: ${res.status}`);
     }
     const data = await res.json();
     const audioBase64: string = data.audios?.[0] ?? '';
@@ -46,12 +45,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ camp
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
+        // No cache for overrides (preview); long cache for real calls
         'Cache-Control': voiceOverride ? 'no-store' : 'public, max-age=86400',
       },
     });
   } catch (err: any) {
-    const msg = err?.message ?? String(err);
-    console.error('[TTS] Error:', msg);
-    return new NextResponse(`TTS failed: ${msg}`, { status: 502 });
+    console.error('[TTS] Error:', err?.message);
+    return new NextResponse(`TTS failed: ${err?.message}`, { status: 502 });
   }
 }

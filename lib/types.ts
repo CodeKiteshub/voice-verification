@@ -10,6 +10,7 @@ export interface Campaign {
   question: string;
   provider: Provider;
   stt_enabled: boolean;
+  tts_voice: string;
   status: 'draft' | 'active' | 'completed';
   created_at: string;
   call_count?: number;

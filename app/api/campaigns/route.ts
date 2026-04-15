@@ -8,7 +8,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, question, provider, stt_enabled } = body;
+  const { name, question, provider, stt_enabled, tts_voice } = body;
   if (!name || !question) {
     return NextResponse.json({ error: 'name and question are required' }, { status: 400 });
   }
@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     question,
     provider: activeProvider,
     stt_enabled: stt_enabled ?? (await getSetting('stt_enabled')) !== 'false',
+    tts_voice: tts_voice ?? (await getSetting('tts_voice')) ?? 'anushka',
   });
   return NextResponse.json(campaign, { status: 201 });
 }

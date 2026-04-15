@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addSubtleNoise } from '@/lib/audio/noise';
 
-const SAMPLE_TEXT = 'Hello, do you confirm your appointment for tomorrow at 10 AM? Please say yes or no after the tone.';
+const SAMPLE_TEXT = 'Hello, do you confirm your appointment for tomorrow at 10 AM? Please say yes or no.';
 
 export async function GET(req: NextRequest) {
-  const voice = new URL(req.url).searchParams.get('voice') ?? 'anushka';
+  const sp    = new URL(req.url).searchParams;
+  const voice = sp.get('voice') ?? 'anushka';
+  // Use caller's question text if provided, else sample
+  const text  = sp.get('text')?.trim() || SAMPLE_TEXT;
 
   try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
@@ -14,7 +17,7 @@ export async function GET(req: NextRequest) {
         'api-subscription-key': process.env.SARVAM_API_KEY!,
       },
       body: JSON.stringify({
-        inputs: [SAMPLE_TEXT],
+        inputs: [text],
         target_language_code: 'en-IN',
         speaker: voice,
         pitch: 0,
@@ -27,8 +30,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error(`[TTS/preview] Sarvam error ${res.status}: ${err}`);
+      console.error(`[TTS/preview] Sarvam error ${res.status}: ${await res.text()}`);
       return new NextResponse('Preview failed', { status: 502 });
     }
 
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'no-store',
       },
     });
   } catch (err: any) {
