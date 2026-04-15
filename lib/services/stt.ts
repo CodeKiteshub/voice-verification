@@ -26,6 +26,9 @@ async function downloadRecording(url: string, provider: Provider): Promise<Buffe
   if (provider === 'exotel') {
     const creds = Buffer.from(`${process.env.EXOTEL_API_KEY}:${process.env.EXOTEL_API_TOKEN}`).toString('base64');
     headers['Authorization'] = `Basic ${creds}`;
+  } else if (provider === 'vobiz') {
+    headers['X-Auth-ID'] = process.env.VOBIZ_API_KEY!;
+    headers['X-Auth-Token'] = process.env.VOBIZ_AUTH_TOKEN!;
   }
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`Audio download failed: ${res.status}`);
@@ -34,7 +37,7 @@ async function downloadRecording(url: string, provider: Provider): Promise<Buffe
 
 async function transcribeWithSarvam(audioBuffer: Buffer): Promise<string> {
   const fd = new FormData();
-  fd.append('file', audioBuffer, { filename: 'recording.mp3', contentType: 'audio/mpeg' });
+  fd.append('file', audioBuffer, { filename: 'recording.wav', contentType: 'audio/wav' });
   fd.append('model', 'saarika:v2');
   fd.append('language_code', 'unknown');
 

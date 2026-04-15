@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import type { Intent } from '@/lib/types';
 
 const STYLES: Record<Intent, string> = {
@@ -15,16 +14,13 @@ export function ManualIntentButtons({
   currentIntent?: Intent;
   onUpdate: (intent: Intent) => void;
 }) {
-  const [selected, setSelected] = useState<Intent | undefined>(currentIntent);
-
   const set = async (intent: Intent) => {
-    setSelected(intent);
+    onUpdate(intent); // optimistic update — parent state updates immediately
     await fetch(`/api/calls/${callId}/intent`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ intent }),
     });
-    onUpdate(intent);
   };
 
   return (
@@ -33,7 +29,9 @@ export function ManualIntentButtons({
       {(['YES', 'NO', 'UNCLEAR'] as Intent[]).map(intent => (
         <button key={intent} onClick={() => set(intent)}
           className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
-            selected === intent ? STYLES[intent] : 'bg-white border-gray-200 text-gray-400 hover:border-gray-400'
+            currentIntent === intent
+              ? STYLES[intent]
+              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-400'
           }`}
         >
           {intent}

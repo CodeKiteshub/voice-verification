@@ -6,11 +6,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const call = await getCallById(id);
   if (!call?.recording_url) return new NextResponse('Not found', { status: 404 });
 
-  const creds = Buffer.from(
-    `${process.env.EXOTEL_API_KEY}:${process.env.EXOTEL_API_TOKEN}`
-  ).toString('base64');
+  const headers: Record<string, string> = {};
+  if (call.provider === 'vobiz') {
+    headers['X-Auth-ID'] = process.env.VOBIZ_API_KEY!;
+    headers['X-Auth-Token'] = process.env.VOBIZ_AUTH_TOKEN!;
+  } else {
+    const creds = Buffer.from(
+      `${process.env.EXOTEL_API_KEY}:${process.env.EXOTEL_API_TOKEN}`
+    ).toString('base64');
+    headers['Authorization'] = `Basic ${creds}`;
+  }
 
-  const res = await fetch(call.recording_url, { headers: { Authorization: `Basic ${creds}` } });
+  const res = await fetch(call.recording_url, { headers });
   if (!res.ok) return new NextResponse('Proxy failed', { status: 502 });
 
   const audio = await res.arrayBuffer();
