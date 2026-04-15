@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
       body: JSON.stringify({
         inputs: [campaign.question],
         target_language_code: 'en-IN',
-        speaker: 'meera',
+        speaker: 'anushka',
         pitch: 0,
         pace: 1.0,
         loudness: 1.5,
