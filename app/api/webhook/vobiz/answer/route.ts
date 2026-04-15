@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${ttsUrl}</Play>
-  <Record maxLength="30" finishOnKey="#" playBeep="true" recordingCallbackUrl="${recordingCallback}" action="${recordingCallback}"/>
-  <Speak language="hi-IN">आपके जवाब के लिए धन्यवाद। अलविदा।</Speak>
+  <Record maxLength="15" finishOnKey="#" playBeep="true" recordingCallbackUrl="${recordingCallback}"/>
+  <Speak>Thank you for your response. Goodbye.</Speak>
   <Hangup/>
 </Response>`;
 
