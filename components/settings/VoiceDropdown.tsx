@@ -4,14 +4,12 @@ import { Play, Square } from 'lucide-react';
 
 export const VOICES = [
   { id: 'anushka',  label: 'Anushka  — Female' },
-  { id: 'meera',    label: 'Meera    — Female' },
-  { id: 'pavithra', label: 'Pavithra — Female' },
-  { id: 'maitreyi', label: 'Maitreyi — Female' },
-  { id: 'diya',     label: 'Diya     — Female' },
-  { id: 'karan',    label: 'Karan    — Male'   },
-  { id: 'arvind',   label: 'Arvind   — Male'   },
-  { id: 'amol',     label: 'Amol     — Male'   },
-  { id: 'arjun',    label: 'Arjun    — Male'   },
+  { id: 'manisha',  label: 'Manisha  — Female' },
+  { id: 'vidya',    label: 'Vidya    — Female' },
+  { id: 'arya',     label: 'Arya     — Female' },
+  { id: 'abhilash', label: 'Abhilash — Male'   },
+  { id: 'karun',    label: 'Karun    — Male'   },
+  { id: 'hitesh',   label: 'Hitesh   — Male'   },
 ];
 
 interface Props {
