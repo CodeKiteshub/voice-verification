@@ -36,7 +36,7 @@ export function CallCard({ call: initialCall }: { call: CallRecord }) {
             </span>
           </div>
           <p className="text-xs text-gray-400">
-            {call.provider} · {new Date(call.called_at).toLocaleString()}
+            {call.provider === 'exotel' ? 'Model EX' : call.provider === 'vobiz' ? 'Model VO' : call.provider} · {new Date(call.called_at).toLocaleString()}
             {call.duration_seconds ? ` · ${call.duration_seconds}s` : ''}
           </p>
         </div>

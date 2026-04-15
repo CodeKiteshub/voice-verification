@@ -69,8 +69,8 @@ export function CreateCampaignForm() {
         <select value={provider} onChange={e => setProvider(e.target.value as Provider)}
           className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
         >
-          <option value="exotel">Exotel</option>
-          <option value="vobiz">Vobiz</option>
+          <option value="exotel">Model EX</option>
+          <option value="vobiz">Model VO</option>
         </select>
       </div>
       <div className="flex items-center gap-3">

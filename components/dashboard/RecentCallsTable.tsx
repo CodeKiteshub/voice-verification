@@ -21,7 +21,7 @@ export function RecentCallsTable({ calls }: { calls: CallRecord[] }) {
               <td className="px-4 py-3 font-mono">{c.phone}</td>
               <td className="px-4 py-3 capitalize">{c.status}</td>
               <td className="px-4 py-3"><IntentBadge intent={c.intent} /></td>
-              <td className="px-4 py-3 capitalize">{c.provider}</td>
+              <td className="px-4 py-3">{c.provider === 'exotel' ? 'Model EX' : c.provider === 'vobiz' ? 'Model VO' : c.provider}</td>
               <td className="px-4 py-3 text-gray-500">{new Date(c.called_at).toLocaleString()}</td>
             </tr>
           ))}

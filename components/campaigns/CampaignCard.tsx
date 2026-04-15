@@ -8,7 +8,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
         <h3 className="font-semibold text-gray-900">{campaign.name}</h3>
         <p className="text-sm text-gray-500 line-clamp-2">{campaign.question}</p>
         <div className="flex items-center gap-3 text-xs text-gray-400 pt-1">
-          <span className="capitalize">{campaign.provider}</span>
+          <span>{campaign.provider === 'exotel' ? 'Model EX' : campaign.provider === 'vobiz' ? 'Model VO' : campaign.provider}</span>
           <span>·</span>
           <span>{campaign.call_count ?? 0} calls</span>
           <span>·</span>

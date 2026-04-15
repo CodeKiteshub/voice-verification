@@ -46,7 +46,7 @@ export default function CampaignDetailPage() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">{campaign.name}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Provider: <span className="font-medium capitalize">{campaign.provider}</span>
+            Provider: <span className="font-medium">{campaign.provider === 'exotel' ? 'Model EX' : campaign.provider === 'vobiz' ? 'Model VO' : campaign.provider}</span>
             {' · '}STT: <span className="font-medium">{campaign.stt_enabled ? 'On' : 'Off'}</span>
           </p>
         </div>
