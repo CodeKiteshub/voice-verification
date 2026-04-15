@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Wait length="2"/>
   <Play>${ttsUrl}</Play>
   <Record maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
 </Response>`;
