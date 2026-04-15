@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCampaignById } from '@/lib/db';
+import { getCampaignById, getSetting } from '@/lib/db';
 import { addSubtleNoise } from '@/lib/audio/noise';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ campaign_id: string }> }) {
   const { campaign_id } = await params;
-  const campaign = await getCampaignById(campaign_id);
+  const [campaign, voice] = await Promise.all([
+    getCampaignById(campaign_id),
+    getSetting('tts_voice'),
+  ]);
   if (!campaign) return new NextResponse('Not found', { status: 404 });
 
   try {
@@ -17,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
       body: JSON.stringify({
         inputs: [campaign.question],
         target_language_code: 'en-IN',
-        speaker: 'anushka',
+        speaker: voice ?? 'anushka',
         pitch: 0,
         pace: 1.0,
         loudness: 1.5,

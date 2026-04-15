@@ -55,6 +55,11 @@ export async function initSettings(): Promise<void> {
       { $setOnInsert: { key: 'stt_enabled', value: 'true' } },
       { upsert: true }
     ),
+    c.updateOne(
+      { key: 'tts_voice' },
+      { $setOnInsert: { key: 'tts_voice', value: 'anushka' } },
+      { upsert: true }
+    ),
   ]);
 }
 

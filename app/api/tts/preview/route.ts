@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
-import { getSetting } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
 import { addSubtleNoise } from '@/lib/audio/noise';
 
-const TEXT = 'Thank you for your response. Goodbye.';
+const SAMPLE_TEXT = 'Hello, do you confirm your appointment for tomorrow at 10 AM? Please say yes or no after the tone.';
 
-export async function GET() {
-  const voice = await getSetting('tts_voice');
+export async function GET(req: NextRequest) {
+  const voice = new URL(req.url).searchParams.get('voice') ?? 'anushka';
+
   try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
@@ -14,9 +14,9 @@ export async function GET() {
         'api-subscription-key': process.env.SARVAM_API_KEY!,
       },
       body: JSON.stringify({
-        inputs: [TEXT],
+        inputs: [SAMPLE_TEXT],
         target_language_code: 'en-IN',
-        speaker: voice ?? 'anushka',
+        speaker: voice,
         pitch: 0,
         pace: 1.0,
         loudness: 1.5,
@@ -28,23 +28,23 @@ export async function GET() {
 
     if (!res.ok) {
       const err = await res.text();
-      console.error(`[TTS/thankyou] Sarvam error ${res.status}: ${err}`);
-      throw new Error(`Sarvam TTS failed: ${res.status}`);
+      console.error(`[TTS/preview] Sarvam error ${res.status}: ${err}`);
+      return new NextResponse('Preview failed', { status: 502 });
     }
 
     const data = await res.json();
     const audioBase64: string = data.audios?.[0] ?? '';
-    if (!audioBase64) throw new Error('No audio returned');
+    if (!audioBase64) return new NextResponse('No audio returned', { status: 502 });
 
     const audioBuffer = addSubtleNoise(Buffer.from(audioBase64, 'base64'));
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'public, max-age=3600',
       },
     });
   } catch (err: any) {
-    console.error('[TTS/thankyou] Error:', err?.message);
-    return new NextResponse('TTS failed', { status: 502 });
+    console.error('[TTS/preview] Error:', err?.message);
+    return new NextResponse('Preview failed', { status: 502 });
   }
 }
