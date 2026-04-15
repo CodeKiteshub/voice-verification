@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { addSubtleNoise } from '@/lib/audio/noise';
 
 const TEXT = 'Thank you for your response. Goodbye.';
 
@@ -33,8 +34,8 @@ export async function GET() {
     const audioBase64: string = data.audios?.[0] ?? '';
     if (!audioBase64) throw new Error('No audio returned');
 
-    const audioBuffer = Buffer.from(audioBase64, 'base64');
-    return new NextResponse(audioBuffer, {
+    const audioBuffer = addSubtleNoise(Buffer.from(audioBase64, 'base64'));
+    return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
         'Cache-Control': 'public, max-age=86400',
