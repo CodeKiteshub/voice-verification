@@ -3,11 +3,12 @@ import { getCampaignById, getContacts, createCallRecord, updateCallRecord, getSe
 import { getProvider } from '@/lib/providers';
 import type { Provider } from '@/lib/types';
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const campaign = await getCampaignById(params.id);
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const campaign = await getCampaignById(id);
   if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const contacts = await getContacts(params.id);
+  const contacts = await getContacts(id);
   if (!contacts.length) return NextResponse.json({ error: 'No contacts' }, { status: 400 });
 
   const provider = ((await getSetting('active_provider')) as Provider) ?? 'exotel';
@@ -16,7 +17,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   for (const contact of contacts) {
     const record = await createCallRecord({
-      campaign_id: params.id,
+      campaign_id: id,
       contact_id: contact.id,
       phone: contact.phone,
       provider,
@@ -25,7 +26,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     try {
       const { providerCallId } = await telephony.initiateCall({
         to: contact.phone,
-        campaignId: params.id,
+        campaignId: id,
         contactId: contact.id,
         callRecordId: record.id,
         question: campaign.question,
