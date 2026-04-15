@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cam
         loudness: 1.5,
         speech_sample_rate: 16000,
         enable_preprocessing: true,
-        model: 'bulbul:v1',
+        model: 'bulbul:v2',
       }),
     });
 
