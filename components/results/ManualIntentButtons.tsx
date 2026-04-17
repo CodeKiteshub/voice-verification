@@ -24,17 +24,17 @@ export function ManualIntentButtons({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-gray-500">Set intent:</span>
+    <div className="flex items-center gap-2 pt-1 border-t border-gray-100/80">
+      <span className="text-xs text-gray-500 font-medium">Override intent:</span>
       {(['YES', 'NO', 'UNCLEAR'] as Intent[]).map(intent => (
         <button key={intent} onClick={() => set(intent)}
-          className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
+          className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all shadow-sm ${
             currentIntent === intent
-              ? STYLES[intent]
-              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-400'
+              ? `${STYLES[intent]} scale-105 shadow-md`
+              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'
           }`}
         >
-          {intent}
+          {currentIntent === intent ? `✓ ${intent}` : intent}
         </button>
       ))}
     </div>

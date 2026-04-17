@@ -1,14 +1,22 @@
 import { MongoClient, ObjectId, Db, Collection } from 'mongodb';
-import type { Campaign, Contact, CallRecord, DashboardStats, Provider, Intent } from './types';
+import type { Campaign, Contact, CallRecord, DashboardStats, Provider, Intent, User, UserWithHash } from './types';
 
 const MONGODB_URI = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/voice_verification';
 
 let _client: MongoClient | null = null;
 
+let _indexesCreated = false;
+
 async function getClient(): Promise<MongoClient> {
   if (!_client) {
     _client = new MongoClient(MONGODB_URI);
     await _client.connect();
+  }
+  if (!_indexesCreated) {
+    _indexesCreated = true;
+    const db = _client.db();
+    // Unique email index on users
+    db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
   }
   return _client;
 }
@@ -63,13 +71,106 @@ export async function initSettings(): Promise<void> {
   ]);
 }
 
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+export async function countUsers(): Promise<number> {
+  const c = await col('users');
+  return c.countDocuments();
+}
+
+export async function createUser(data: {
+  email: string;
+  password_hash: string;
+  name: string;
+  role: 'admin' | 'user';
+  is_active: boolean;
+  call_limit: number;
+  created_by?: string;
+}): Promise<User> {
+  const c = await col('users');
+  const doc = {
+    email: data.email.toLowerCase().trim(),
+    password_hash: data.password_hash,
+    name: data.name,
+    role: data.role,
+    is_active: data.is_active,
+    call_limit: data.call_limit,
+    calls_used: 0,
+    created_at: new Date().toISOString(),
+    ...(data.created_by ? { created_by: data.created_by } : {}),
+  };
+  const result = await c.insertOne(doc);
+  const { password_hash, ...rest } = doc;
+  return { ...rest, id: result.insertedId.toHexString() } as User;
+}
+
+export async function getUserByEmail(email: string): Promise<UserWithHash | null> {
+  const c = await col('users');
+  const doc = await c.findOne({ email: email.toLowerCase().trim() }) as any;
+  if (!doc) return null;
+  const { _id, ...rest } = doc;
+  return { ...rest, id: (_id as ObjectId).toHexString() } as UserWithHash;
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const c = await col('users');
+  const doc = await c.findOne({ _id: new ObjectId(id) }) as any;
+  if (!doc) return null;
+  const { _id, password_hash, ...rest } = doc;
+  return { ...rest, id: (_id as ObjectId).toHexString() } as User;
+}
+
+export async function getUsers(filter?: { search?: string }): Promise<User[]> {
+  const c = await col('users');
+  const query: Record<string, any> = {};
+  if (filter?.search) {
+    const re = new RegExp(filter.search, 'i');
+    query.$or = [{ name: re }, { email: re }];
+  }
+  const docs = await c.find(query).sort({ created_at: -1 }).toArray() as any[];
+  return docs.map(({ _id, password_hash, ...rest }) => ({
+    ...rest,
+    id: (_id as ObjectId).toHexString(),
+  })) as User[];
+}
+
+export async function updateUser(
+  id: string,
+  data: Partial<{
+    name: string;
+    email: string;
+    password_hash: string;
+    role: 'admin' | 'user';
+    is_active: boolean;
+    call_limit: number;
+  }>
+): Promise<User | null> {
+  if (!ObjectId.isValid(id) || !Object.keys(data).length) return getUserById(id);
+  const c = await col('users');
+  await c.updateOne({ _id: new ObjectId(id) }, { $set: data });
+  return getUserById(id);
+}
+
+export async function incrementCallsUsed(userId: string, count: number): Promise<void> {
+  if (!ObjectId.isValid(userId) || count <= 0) return;
+  const c = await col('users');
+  await c.updateOne({ _id: new ObjectId(userId) }, { $inc: { calls_used: count } });
+}
+
 // ─── Campaigns ───────────────────────────────────────────────────────────────
 
 export async function createCampaign(data: {
-  name: string; question: string; provider: Provider; stt_enabled: boolean; tts_voice?: string;
+  user_id: string;
+  name: string;
+  question: string;
+  provider: Provider;
+  stt_enabled: boolean;
+  tts_voice?: string;
 }): Promise<Campaign> {
   const c = await col('campaigns');
   const doc = {
+    user_id: new ObjectId(data.user_id),
     name: data.name,
     question: data.question,
     provider: data.provider,
@@ -79,13 +180,21 @@ export async function createCampaign(data: {
     created_at: new Date().toISOString(),
   };
   const result = await c.insertOne(doc);
-  return toObj<Campaign>({ _id: result.insertedId, ...doc })!;
+  return {
+    ...doc,
+    id: result.insertedId.toHexString(),
+    user_id: data.user_id,
+  } as unknown as Campaign;
 }
 
-export async function getCampaigns(): Promise<Campaign[]> {
+export async function getCampaigns(userId?: string): Promise<Campaign[]> {
   const db = await getDb();
+  const matchStage = userId && ObjectId.isValid(userId)
+    ? [{ $match: { user_id: new ObjectId(userId) } }]
+    : [];
   const docs = await db.collection('campaigns')
     .aggregate([
+      ...matchStage,
       {
         $lookup: {
           from: 'call_records',
@@ -100,16 +209,26 @@ export async function getCampaigns(): Promise<Campaign[]> {
     ])
     .toArray();
   return docs.map(d => {
-    const { _id, ...rest } = d;
-    return { ...rest, id: (_id as ObjectId).toHexString() } as Campaign;
+    const { _id, user_id, ...rest } = d as any;
+    return {
+      ...rest,
+      id: (_id as ObjectId).toHexString(),
+      user_id: (user_id as ObjectId).toHexString(),
+    } as Campaign;
   });
 }
 
 export async function getCampaignById(id: string): Promise<Campaign | null> {
   if (!ObjectId.isValid(id)) return null;
   const c = await col('campaigns');
-  const doc = await c.findOne({ _id: new ObjectId(id) });
-  return toObj<Campaign>(doc);
+  const doc = await c.findOne({ _id: new ObjectId(id) }) as any;
+  if (!doc) return null;
+  const { _id, user_id, ...rest } = doc;
+  return {
+    ...rest,
+    id: (_id as ObjectId).toHexString(),
+    user_id: (user_id as ObjectId)?.toHexString() ?? '',
+  } as Campaign;
 }
 
 export async function updateCampaign(
@@ -172,12 +291,17 @@ export async function getContacts(campaignId: string): Promise<Contact[]> {
 // ─── Call Records ─────────────────────────────────────────────────────────────
 
 export async function createCallRecord(data: {
-  campaign_id: string; contact_id: string; phone: string; provider: Provider;
+  campaign_id: string;
+  contact_id: string;
+  user_id: string;
+  phone: string;
+  provider: Provider;
 }): Promise<CallRecord> {
   const c = await col('call_records');
   const doc = {
     campaign_id: new ObjectId(data.campaign_id),
     contact_id: new ObjectId(data.contact_id),
+    user_id: new ObjectId(data.user_id),
     phone: data.phone,
     provider: data.provider,
     status: 'initiated',
@@ -190,6 +314,7 @@ export async function createCallRecord(data: {
     id: result.insertedId.toHexString(),
     campaign_id: data.campaign_id,
     contact_id: data.contact_id,
+    user_id: data.user_id,
   } as unknown as CallRecord;
 }
 
@@ -203,12 +328,19 @@ export async function updateCallRecord(
 }
 
 export async function getCallRecords(filters?: {
-  campaign_id?: string; status?: string; intent?: string; limit?: number;
+  campaign_id?: string;
+  user_id?: string;
+  status?: string;
+  intent?: string;
+  limit?: number;
 }): Promise<CallRecord[]> {
   const c = await col('call_records');
   const query: Record<string, any> = {};
   if (filters?.campaign_id && ObjectId.isValid(filters.campaign_id)) {
     query.campaign_id = new ObjectId(filters.campaign_id);
+  }
+  if (filters?.user_id && ObjectId.isValid(filters.user_id)) {
+    query.user_id = new ObjectId(filters.user_id);
   }
   if (filters?.status) query.status = filters.status;
   if (filters?.intent) query.intent = filters.intent;
@@ -218,12 +350,13 @@ export async function getCallRecords(filters?: {
 
   const docs = await cursor.toArray();
   return docs.map(d => {
-    const { _id, campaign_id, contact_id, ...rest } = d as any;
+    const { _id, campaign_id, contact_id, user_id, ...rest } = d as any;
     return {
       ...rest,
       id: (_id as ObjectId).toHexString(),
       campaign_id: (campaign_id as ObjectId).toHexString(),
       contact_id: (contact_id as ObjectId).toHexString(),
+      user_id: (user_id as ObjectId)?.toHexString() ?? '',
     } as CallRecord;
   });
 }
@@ -233,18 +366,23 @@ export async function getCallById(id: string): Promise<CallRecord | null> {
   const c = await col('call_records');
   const doc = await c.findOne({ _id: new ObjectId(id) }) as any;
   if (!doc) return null;
-  const { _id, campaign_id, contact_id, ...rest } = doc;
+  const { _id, campaign_id, contact_id, user_id, ...rest } = doc;
   return {
     ...rest,
     id: (_id as ObjectId).toHexString(),
     campaign_id: (campaign_id as ObjectId).toHexString(),
     contact_id: (contact_id as ObjectId).toHexString(),
+    user_id: (user_id as ObjectId)?.toHexString() ?? '',
   } as CallRecord;
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+export async function getDashboardStats(userId?: string): Promise<DashboardStats> {
   const c = await col('call_records');
+  const matchStage = userId && ObjectId.isValid(userId)
+    ? [{ $match: { user_id: new ObjectId(userId) } }]
+    : [];
   const [result] = await c.aggregate([
+    ...matchStage,
     {
       $group: {
         _id: null,

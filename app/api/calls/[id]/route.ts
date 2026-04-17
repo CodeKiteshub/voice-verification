@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCallById } from '@/lib/db';
+import { requireApiSession, assertCallOwner } from '@/lib/auth';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { session, error } = await requireApiSession(req);
+  if (error) return error;
+
   const { id } = await params;
-  const call = await getCallById(id);
-  if (!call) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { call, error: ownerErr } = await assertCallOwner(id, session!);
+  if (ownerErr) return ownerErr;
+
   return NextResponse.json(call);
 }

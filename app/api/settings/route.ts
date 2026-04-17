@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSetting, setSetting, initSettings } from '@/lib/db';
+import { requireAdminApi } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { error } = await requireAdminApi(req);
+  if (error) return error;
+
   await initSettings();
   const [active_provider, stt_enabled_str, tts_voice] = await Promise.all([
     getSetting('active_provider'),
@@ -16,6 +20,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const { error } = await requireAdminApi(req);
+  if (error) return error;
+
   const body = await req.json();
   const ops: Promise<void>[] = [];
   if (body.active_provider !== undefined) ops.push(setSetting('active_provider', body.active_provider));

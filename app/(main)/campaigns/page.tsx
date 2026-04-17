@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import { getCampaigns } from '@/lib/db';
+import { requireSession } from '@/lib/auth';
 import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { Plus } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CampaignsPage() {
-  const campaigns = await getCampaigns();
+  const session = await requireSession();
+  const userId = session.role === 'admin' ? undefined : session.userId;
+  const campaigns = await getCampaigns(userId);
 
   return (
     <div className="space-y-6">
