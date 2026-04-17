@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Phone, BarChart3, Users, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Phone, BarChart3, Users, ShieldCheck, Settings } from 'lucide-react';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import type { SessionData } from '@/lib/session';
 
@@ -15,6 +15,7 @@ const ADMIN_NAV = [
   { href: '/admin/users',     label: 'Users',         icon: Users },
   { href: '/admin/campaigns', label: 'All Campaigns', icon: Phone },
   { href: '/admin/results',   label: 'All Results',   icon: BarChart3 },
+  { href: '/admin/settings',  label: 'Settings',      icon: Settings },
 ];
 
 export function Sidebar({ session }: { session: SessionData }) {

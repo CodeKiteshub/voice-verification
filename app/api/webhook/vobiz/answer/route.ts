@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyVobizWebhook } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
+  const rawBody = await req.text();
+  if (!verifyVobizWebhook(req, rawBody)) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+
   const sp = new URL(req.url).searchParams;
   const campaignId = sp.get('campaign_id') ?? '';
   const callRecordId = sp.get('call_record_id') ?? '0';

@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyVobizWebhook } from '@/lib/auth';
 import { updateCallRecord, getSetting } from '@/lib/db';
 import { runStt } from '@/lib/services/stt';
 
 export async function POST(req: NextRequest) {
+  const rawBody = await req.text();
+  if (!verifyVobizWebhook(req, rawBody)) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+
   const callRecordId = new URL(req.url).searchParams.get('call_record_id') ?? '';
 
+  // Parse body
   let body: Record<string, any> = {};
   const contentType = req.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
-    body = await req.json();
+    body = JSON.parse(rawBody || '{}');
   } else {
-    const fd = await req.formData();
+    const fd = new URLSearchParams(rawBody);
     body = Object.fromEntries(fd.entries());
   }
 

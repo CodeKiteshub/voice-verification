@@ -1,10 +1,13 @@
 import { MongoClient, ObjectId, Db, Collection } from 'mongodb';
-import type { Campaign, Contact, CallRecord, DashboardStats, Provider, Intent, User, UserWithHash } from './types';
+import type {
+  Campaign, Contact, CallRecord, DashboardStats, Provider,
+  Intent, User, UserWithHash, CampaignType, AgentConfig, VapiStatus,
+  AgentEngine, ConversationTurn,
+} from './types';
 
 const MONGODB_URI = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/voice_verification';
 
 let _client: MongoClient | null = null;
-
 let _indexesCreated = false;
 
 async function getClient(): Promise<MongoClient> {
@@ -15,8 +18,15 @@ async function getClient(): Promise<MongoClient> {
   if (!_indexesCreated) {
     _indexesCreated = true;
     const db = _client.db();
-    // Unique email index on users
+    // Users
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
+    // Call records: prevent duplicate calls per contact per campaign + perf indexes
+    db.collection('call_records').createIndex(
+      { campaign_id: 1, contact_id: 1 }, { unique: true }
+    ).catch(() => {});
+    db.collection('call_records').createIndex({ status: 1, called_at: -1 }).catch(() => {});
+    // Campaigns
+    db.collection('campaigns').createIndex({ user_id: 1, campaign_type: 1 }).catch(() => {});
   }
   return _client;
 }
@@ -37,6 +47,17 @@ function toObj<T extends { id: string }>(doc: any): T | null {
   return { ...rest, id: (_id as ObjectId).toHexString() } as T;
 }
 
+/** Normalize a raw MongoDB campaign document — ensures campaign_type defaults to 'verification' */
+function normalizeCampaign(doc: any): Campaign {
+  const { _id, user_id, ...rest } = doc;
+  return {
+    ...rest,
+    id: (_id as ObjectId).toHexString(),
+    user_id: (user_id as ObjectId)?.toHexString() ?? '',
+    campaign_type: rest.campaign_type ?? 'verification',
+  } as Campaign;
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 export async function getSetting(key: string): Promise<string | null> {
@@ -52,23 +73,35 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function initSettings(): Promise<void> {
   const c = await col<{ key: string; value: string }>('settings');
-  await Promise.all([
-    c.updateOne(
-      { key: 'active_provider' },
-      { $setOnInsert: { key: 'active_provider', value: 'exotel' } },
-      { upsert: true }
-    ),
-    c.updateOne(
-      { key: 'stt_enabled' },
-      { $setOnInsert: { key: 'stt_enabled', value: 'true' } },
-      { upsert: true }
-    ),
-    c.updateOne(
-      { key: 'tts_voice' },
-      { $setOnInsert: { key: 'tts_voice', value: 'anushka' } },
-      { upsert: true }
-    ),
-  ]);
+  const defaults: Record<string, string> = {
+    active_provider:       'exotel',
+    stt_enabled:           'true',
+    tts_voice:             'anushka',
+    agent_engine:          'vapi',
+    vapi_api_key:          '',
+    vapi_phone_number_id:  '',
+    vapi_llm_model:        'gpt-4o-mini',
+    vapi_tts_voice:        'hi-IN-SwaraNeural',
+    vapi_webhook_secret:   '',
+    pipecat_server_url:    '',
+    pipecat_tts_provider:  'sarvam',
+  };
+  await Promise.all(
+    Object.entries(defaults).map(([key, value]) =>
+      c.updateOne(
+        { key },
+        { $setOnInsert: { key, value } },
+        { upsert: true }
+      )
+    )
+  );
+}
+
+/** Returns all settings as a flat key→value record */
+export async function getAllSettings(): Promise<Record<string, string>> {
+  const c = await col<{ key: string; value: string }>('settings');
+  const docs = await c.find({}).toArray();
+  return Object.fromEntries(docs.map(d => [d.key, d.value]));
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -167,18 +200,25 @@ export async function createCampaign(data: {
   provider: Provider;
   stt_enabled: boolean;
   tts_voice?: string;
+  campaign_type?: CampaignType;
+  agent_config?: AgentConfig;
+  vapi_status?: VapiStatus;
 }): Promise<Campaign> {
   const c = await col('campaigns');
-  const doc = {
+  const doc: Record<string, any> = {
     user_id: new ObjectId(data.user_id),
     name: data.name,
     question: data.question,
     provider: data.provider,
     stt_enabled: data.stt_enabled,
     tts_voice: data.tts_voice ?? 'anushka',
+    campaign_type: data.campaign_type ?? 'verification',
     status: 'draft',
     created_at: new Date().toISOString(),
   };
+  if (data.agent_config) doc.agent_config = data.agent_config;
+  if (data.vapi_status)  doc.vapi_status  = data.vapi_status;
+
   const result = await c.insertOne(doc);
   return {
     ...doc,
@@ -208,14 +248,7 @@ export async function getCampaigns(userId?: string): Promise<Campaign[]> {
       { $sort: { created_at: -1 } },
     ])
     .toArray();
-  return docs.map(d => {
-    const { _id, user_id, ...rest } = d as any;
-    return {
-      ...rest,
-      id: (_id as ObjectId).toHexString(),
-      user_id: (user_id as ObjectId).toHexString(),
-    } as Campaign;
-  });
+  return docs.map(normalizeCampaign);
 }
 
 export async function getCampaignById(id: string): Promise<Campaign | null> {
@@ -223,28 +256,57 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
   const c = await col('campaigns');
   const doc = await c.findOne({ _id: new ObjectId(id) }) as any;
   if (!doc) return null;
-  const { _id, user_id, ...rest } = doc;
-  return {
-    ...rest,
-    id: (_id as ObjectId).toHexString(),
-    user_id: (user_id as ObjectId)?.toHexString() ?? '',
-  } as Campaign;
+  return normalizeCampaign(doc);
 }
 
 export async function updateCampaign(
   id: string,
-  data: { name?: string; question?: string; provider?: Provider; stt_enabled?: boolean; tts_voice?: string }
+  data: Partial<{
+    name: string;
+    question: string;
+    provider: Provider;
+    stt_enabled: boolean;
+    tts_voice: string;
+    status: 'draft' | 'active' | 'completed';
+    campaign_type: CampaignType;
+    agent_config: AgentConfig;
+    vapi_assistant_id: string;
+    vapi_status: VapiStatus;
+    is_running: boolean;
+  }>
 ): Promise<Campaign | null> {
   if (!ObjectId.isValid(id) || !Object.keys(data).length) return getCampaignById(id);
   const c = await col('campaigns');
   const update: Record<string, any> = {};
-  if (data.name        !== undefined) update.name        = data.name;
-  if (data.question    !== undefined) update.question    = data.question;
-  if (data.provider    !== undefined) update.provider    = data.provider;
-  if (data.stt_enabled !== undefined) update.stt_enabled = data.stt_enabled;
-  if (data.tts_voice   !== undefined) update.tts_voice   = data.tts_voice;
+  for (const [k, v] of Object.entries(data)) {
+    if (v !== undefined) update[k] = v;
+  }
   await c.updateOne({ _id: new ObjectId(id) }, { $set: update });
   return getCampaignById(id);
+}
+
+/**
+ * Atomically lock a campaign for triggering.
+ * Returns true if the lock was acquired, false if already running.
+ */
+export async function lockCampaignForTrigger(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const db = await getDb();
+  const result = await db.collection('campaigns').findOneAndUpdate(
+    { _id: new ObjectId(id), is_running: { $ne: true } },
+    { $set: { is_running: true } },
+    { returnDocument: 'after' }
+  );
+  return result !== null;
+}
+
+export async function unlockCampaign(id: string): Promise<void> {
+  if (!ObjectId.isValid(id)) return;
+  const db = await getDb();
+  await db.collection('campaigns').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { is_running: false } }
+  );
 }
 
 export async function deleteCampaign(id: string): Promise<void> {
@@ -296,25 +358,32 @@ export async function createCallRecord(data: {
   user_id: string;
   phone: string;
   provider: Provider;
+  campaign_type?: CampaignType;
+  contact_name?: string | null;
+  agent_engine?: AgentEngine;
 }): Promise<CallRecord> {
   const c = await col('call_records');
-  const doc = {
-    campaign_id: new ObjectId(data.campaign_id),
-    contact_id: new ObjectId(data.contact_id),
-    user_id: new ObjectId(data.user_id),
-    phone: data.phone,
-    provider: data.provider,
-    status: 'initiated',
+  const doc: Record<string, any> = {
+    campaign_id:   new ObjectId(data.campaign_id),
+    contact_id:    new ObjectId(data.contact_id),
+    user_id:       new ObjectId(data.user_id),
+    phone:         data.phone,
+    provider:      data.provider,
+    status:        'initiated',
     recording_proxied: false,
-    called_at: new Date().toISOString(),
+    called_at:     new Date().toISOString(),
   };
+  if (data.campaign_type !== undefined) doc.campaign_type  = data.campaign_type;
+  if (data.contact_name  !== undefined) doc.contact_name   = data.contact_name;
+  if (data.agent_engine  !== undefined) doc.agent_engine   = data.agent_engine;
+
   const result = await c.insertOne(doc);
   return {
     ...doc,
-    id: result.insertedId.toHexString(),
+    id:          result.insertedId.toHexString(),
     campaign_id: data.campaign_id,
-    contact_id: data.contact_id,
-    user_id: data.user_id,
+    contact_id:  data.contact_id,
+    user_id:     data.user_id,
   } as unknown as CallRecord;
 }
 
@@ -325,6 +394,12 @@ export async function updateCallRecord(
   if (!ObjectId.isValid(id) || !Object.keys(data).length) return;
   const c = await col('call_records');
   await c.updateOne({ _id: new ObjectId(id) }, { $set: data });
+}
+
+export async function incrementCallTurnIndex(id: string): Promise<void> {
+  if (!ObjectId.isValid(id)) return;
+  const c = await col('call_records');
+  await c.updateOne({ _id: new ObjectId(id) }, { $inc: { current_turn_index: 1 } });
 }
 
 export async function getCallRecords(filters?: {
@@ -353,10 +428,10 @@ export async function getCallRecords(filters?: {
     const { _id, campaign_id, contact_id, user_id, ...rest } = d as any;
     return {
       ...rest,
-      id: (_id as ObjectId).toHexString(),
+      id:          (_id as ObjectId).toHexString(),
       campaign_id: (campaign_id as ObjectId).toHexString(),
-      contact_id: (contact_id as ObjectId).toHexString(),
-      user_id: (user_id as ObjectId)?.toHexString() ?? '',
+      contact_id:  (contact_id as ObjectId).toHexString(),
+      user_id:     (user_id as ObjectId)?.toHexString() ?? '',
     } as CallRecord;
   });
 }
@@ -369,11 +444,18 @@ export async function getCallById(id: string): Promise<CallRecord | null> {
   const { _id, campaign_id, contact_id, user_id, ...rest } = doc;
   return {
     ...rest,
-    id: (_id as ObjectId).toHexString(),
+    id:          (_id as ObjectId).toHexString(),
     campaign_id: (campaign_id as ObjectId).toHexString(),
-    contact_id: (contact_id as ObjectId).toHexString(),
-    user_id: (user_id as ObjectId)?.toHexString() ?? '',
+    contact_id:  (contact_id as ObjectId).toHexString(),
+    user_id:     (user_id as ObjectId)?.toHexString() ?? '',
   } as CallRecord;
+}
+
+/** Find stale in-progress agent-pipecat calls for crash recovery */
+export async function getStalePipecatCalls(olderThanMinutes = 30): Promise<CallRecord[]> {
+  const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000).toISOString();
+  return getCallRecords({ status: 'answered' });
+  // Caller filters by agent_engine + called_at after fetching
 }
 
 export async function getDashboardStats(userId?: string): Promise<DashboardStats> {
@@ -385,7 +467,7 @@ export async function getDashboardStats(userId?: string): Promise<DashboardStats
     ...matchStage,
     {
       $group: {
-        _id: null,
+        _id:       null,
         total:     { $sum: 1 },
         answered:  { $sum: { $cond: [{ $in: ['$status', ['answered', 'completed']] }, 1, 0] } },
         completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
