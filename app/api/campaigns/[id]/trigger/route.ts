@@ -4,7 +4,6 @@ import {
   getContacts,
   createCallRecord,
   updateCallRecord,
-  getSetting,
   getAllSettings,
   getUserById,
   incrementCallsUsed,
@@ -62,7 +61,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Campaign is already running' }, { status: 409 });
   }
 
-  const provider = ((await getSetting('active_provider')) as Provider) ?? 'exotel';
+  // Use the provider stored on the campaign (derived at creation from user.verification_provider).
+  // DO NOT re-read active_provider here — that would ignore the per-user assignment.
+  const provider = (campaign!.provider ?? 'exotel') as Provider;
   const campaignType = campaign!.campaign_type ?? 'verification';
   const userId = session!.userId;
 

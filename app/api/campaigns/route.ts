@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCampaigns, createCampaign, updateCampaign, getSetting } from '@/lib/db';
+import { getCampaigns, createCampaign, updateCampaign, getSetting, getUserById } from '@/lib/db';
 import { requireApiSession } from '@/lib/auth';
 import type { AgentConfig, CampaignType, Provider } from '@/lib/types';
 
@@ -34,7 +34,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
-  const type: CampaignType = campaign_type ?? 'verification';
+  // Validate raw campaign_type from client.
+  // Only 'verification' and 'agent' are accepted from the form.
+  // 'agent-vapi' / 'agent-pipecat' must NOT be sent directly — engine is server-derived.
+  const rawType: string = campaign_type ?? 'verification';
+  if (!['verification', 'agent'].includes(rawType)) {
+    return NextResponse.json(
+      { error: "campaign_type must be 'verification' or 'agent'" },
+      { status: 400 }
+    );
+  }
+
+  // Single user lookup — shared for both engine resolution and provider resolution.
+  const campaignUser = await getUserById(session!.userId);
+
+  // Resolve the actual CampaignType.
+  // 'agent' → 'agent-vapi' or 'agent-pipecat' based on user's assigned agent_engine.
+  let type: CampaignType;
+  if (rawType === 'agent') {
+    const engine = campaignUser?.agent_engine ?? (await getSetting('agent_engine')) ?? 'vapi';
+    type = engine === 'pipecat' ? 'agent-pipecat' : 'agent-vapi';
+  } else {
+    type = 'verification';
+  }
 
   // Verification campaigns require a question
   if (type === 'verification' && !question) {
@@ -75,7 +97,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const activeProvider = (provider ?? (await getSetting('active_provider')) ?? 'exotel') as Provider;
+  // Resolve telephony provider from user profile.
+  // Agent campaigns: VAPI uses its own number; Pipecat uses user's verification_provider.
+  // Provider from body is only honoured if explicitly passed (admin direct-API usage).
+  const activeProvider: Provider = provider
+    ? (provider as Provider)
+    : ((campaignUser?.verification_provider ?? (await getSetting('active_provider')) ?? 'exotel') as Provider);
+
   const campaign = await createCampaign({
     user_id: session!.userId,
     name,

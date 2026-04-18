@@ -22,14 +22,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body = await req.json();
-  const { name, email, password, role, call_limit, is_active } = body;
+  const { name, email, password, role, call_limit, is_active, verification_provider, agent_engine } = body;
+
+  // Validate enum fields
+  if (verification_provider && !['exotel', 'vobiz'].includes(verification_provider)) {
+    return NextResponse.json({ error: 'verification_provider must be exotel or vobiz' }, { status: 400 });
+  }
+  if (agent_engine && !['vapi', 'pipecat'].includes(agent_engine)) {
+    return NextResponse.json({ error: 'agent_engine must be vapi or pipecat' }, { status: 400 });
+  }
 
   const update: Record<string, any> = {};
-  if (name        !== undefined) update.name        = name;
-  if (email       !== undefined) update.email       = email.toLowerCase().trim();
-  if (role        !== undefined) update.role        = role;
-  if (call_limit  !== undefined) update.call_limit  = Number(call_limit);
-  if (is_active   !== undefined) update.is_active   = Boolean(is_active);
+  if (name                  !== undefined) update.name                  = name;
+  if (email                 !== undefined) update.email                 = email.toLowerCase().trim();
+  if (role                  !== undefined) update.role                  = role;
+  if (call_limit            !== undefined) update.call_limit            = Number(call_limit);
+  if (is_active             !== undefined) update.is_active             = Boolean(is_active);
+  if (verification_provider !== undefined) update.verification_provider = verification_provider;
+  if (agent_engine          !== undefined) update.agent_engine          = agent_engine;
   if (password) {
     update.password_hash = await bcrypt.hash(password, 12);
   }

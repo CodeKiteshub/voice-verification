@@ -4,42 +4,40 @@ import { useRouter } from 'next/navigation';
 import { NumbersUploader } from './NumbersUploader';
 import { VoiceDropdown } from '@/components/settings/VoiceDropdown';
 import { AgentConfigForm, defaultAgentConfig } from './AgentConfigForm';
-import type { AgentConfig, CampaignType, Provider } from '@/lib/types';
+import type { AgentConfig } from '@/lib/types';
 
 interface Contact { phone: string; name?: string; }
 
-const CAMPAIGN_TYPES: { value: CampaignType; label: string; description: string }[] = [
+// Simplified campaign intent shown to users.
+// The actual engine/provider is derived server-side from their profile.
+type CampaignIntent = 'verification' | 'agent';
+
+const CAMPAIGN_TYPES: { value: CampaignIntent; label: string; description: string }[] = [
   {
     value: 'verification',
     label: 'Verification',
     description: 'Play a question and record a YES / NO / UNCLEAR response.',
   },
   {
-    value: 'agent-vapi',
-    label: 'AI Agent (VAPI)',
-    description: 'Real conversational AI — VAPI managed platform. ~₹70 / call.',
-  },
-  {
-    value: 'agent-pipecat',
-    label: 'AI Agent (Pipecat)',
-    description: 'Real conversational AI — custom engine. ~₹10 / call.',
+    value: 'agent',
+    label: 'AI Agent',
+    description: 'Real conversational AI that chats with your contacts.',
   },
 ];
 
 export function CreateCampaignForm() {
   const router = useRouter();
-  const [campaignType, setCampaignType] = useState<CampaignType>('verification');
+  const [campaignType, setCampaignType] = useState<CampaignIntent>('verification');
   const [name,         setName]         = useState('');
   const [question,     setQuestion]     = useState('');
   const [agentConfig,  setAgentConfig]  = useState<AgentConfig>(defaultAgentConfig);
-  const [provider,     setProvider]     = useState<Provider>('exotel');
   const [sttEnabled,   setSttEnabled]   = useState(true);
   const [ttsVoice,     setTtsVoice]     = useState('anushka');
   const [contacts,     setContacts]     = useState<Contact[]>([]);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
 
-  const isAgent = campaignType.startsWith('agent-');
+  const isAgent = campaignType === 'agent';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +50,13 @@ export function CreateCampaignForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
+          // Send the simplified type; server maps 'agent' → 'agent-vapi' or 'agent-pipecat'
+          // based on the user's assigned agent_engine (set by admin).
           campaign_type: campaignType,
           ...(isAgent
             ? { agent_config: agentConfig }
             : { question, stt_enabled: sttEnabled, tts_voice: ttsVoice }),
-          provider,
+          // No provider sent — server derives it from user's verification_provider setting
         }),
       });
       if (!res.ok) {
@@ -91,7 +91,7 @@ export function CreateCampaignForm() {
       {/* Campaign Type Selector */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Campaign Type</label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {CAMPAIGN_TYPES.map(ct => (
             <button
               key={ct.value}
@@ -170,24 +170,6 @@ export function CreateCampaignForm() {
           <AgentConfigForm value={agentConfig} onChange={setAgentConfig} />
         </div>
       )}
-
-      {/* Provider (always shown) */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">Telephony Provider</label>
-        <select
-          value={provider}
-          onChange={e => setProvider(e.target.value as Provider)}
-          className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-indigo-500 focus:ring-indigo-500"
-        >
-          <option value="exotel">Model EX (Exotel)</option>
-          <option value="vobiz">Model VO (Vobiz)</option>
-        </select>
-        {isAgent && campaignType === 'agent-vapi' && (
-          <p className="text-xs text-amber-600 mt-1">
-            VAPI uses its own phone number — the provider setting is saved but not used for calls.
-          </p>
-        )}
-      </div>
 
       {/* Contacts */}
       <NumbersUploader onChange={setContacts} />

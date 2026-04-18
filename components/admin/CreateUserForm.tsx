@@ -7,6 +7,8 @@ export function CreateUserForm() {
   const [form, setForm] = useState({
     name: '', email: '', password: '',
     role: 'user', call_limit: '100', is_active: true,
+    verification_provider: 'exotel',
+    agent_engine: 'vapi',
   });
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,8 +24,17 @@ export function CreateUserForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form,
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+          is_active: form.is_active,
           call_limit: form.role === 'admin' ? -1 : parseInt(form.call_limit),
+          // Only include infra assignments for regular users — keep admin documents clean
+          ...(form.role === 'user' ? {
+            verification_provider: form.verification_provider,
+            agent_engine: form.agent_engine,
+          } : {}),
         }),
       });
       if (!res.ok) {
@@ -89,6 +100,40 @@ export function CreateUserForm() {
           </div>
         )}
       </div>
+
+      {/* Infrastructure assignments — only meaningful for regular users */}
+      {form.role === 'user' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Verification Provider
+            </label>
+            <select
+              value={form.verification_provider}
+              onChange={e => set('verification_provider', e.target.value)}
+              className="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="exotel">Exotel</option>
+              <option value="vobiz">Vobiz</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Used for verification campaigns</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              AI Agent Engine
+            </label>
+            <select
+              value={form.agent_engine}
+              onChange={e => set('agent_engine', e.target.value)}
+              className="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="vapi">VAPI (~₹70 / call)</option>
+              <option value="pipecat">Pipecat (~₹10 / call)</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Used for AI agent campaigns</p>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <input

@@ -119,6 +119,8 @@ export async function createUser(data: {
   is_active: boolean;
   call_limit: number;
   created_by?: string;
+  verification_provider?: Provider;
+  agent_engine?: AgentEngine;
 }): Promise<User> {
   const c = await col('users');
   const doc = {
@@ -131,6 +133,8 @@ export async function createUser(data: {
     calls_used: 0,
     created_at: new Date().toISOString(),
     ...(data.created_by ? { created_by: data.created_by } : {}),
+    ...(data.verification_provider ? { verification_provider: data.verification_provider } : {}),
+    ...(data.agent_engine ? { agent_engine: data.agent_engine } : {}),
   };
   const result = await c.insertOne(doc);
   const { password_hash, ...rest } = doc;
@@ -177,6 +181,8 @@ export async function updateUser(
     role: 'admin' | 'user';
     is_active: boolean;
     call_limit: number;
+    verification_provider: Provider;
+    agent_engine: AgentEngine;
   }>
 ): Promise<User | null> {
   if (!ObjectId.isValid(id) || !Object.keys(data).length) return getUserById(id);

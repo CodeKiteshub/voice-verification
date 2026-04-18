@@ -39,10 +39,13 @@ export interface User {
   name: string;
   role: UserRole;
   is_active: boolean;
-  call_limit: number;   // -1 = unlimited
+  call_limit: number;            // -1 = unlimited
   calls_used: number;
   created_at: string;
-  created_by?: string;  // ObjectId hex of admin who created this user
+  created_by?: string;           // ObjectId hex of admin who created this user
+  // Per-user infrastructure assignments (set by admin, invisible to user)
+  verification_provider?: Provider;  // Which telephony provider for verification calls
+  agent_engine?: AgentEngine;        // Which AI engine for agent calls
 }
 
 // Internal use only — never sent to the client

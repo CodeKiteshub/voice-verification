@@ -12,6 +12,8 @@ export function EditUserForm({ user }: { user: User }) {
     call_limit: user.call_limit === -1 ? '' : String(user.call_limit),
     is_active: user.is_active,
     password: '',
+    verification_provider: user.verification_provider ?? 'exotel',
+    agent_engine: user.agent_engine ?? 'vapi',
   });
   const [error, setError]   = useState('');
   const [saved, setSaved]   = useState(false);
@@ -31,6 +33,11 @@ export function EditUserForm({ user }: { user: User }) {
         role: form.role,
         is_active: form.is_active,
         call_limit: form.role === 'admin' ? -1 : (form.call_limit ? parseInt(form.call_limit) : user.call_limit),
+        // Only persist infra assignments for regular users — keep admin documents clean
+        ...(form.role === 'user' ? {
+          verification_provider: form.verification_provider,
+          agent_engine: form.agent_engine,
+        } : {}),
       };
       if (form.password) payload.password = form.password;
 
@@ -112,6 +119,40 @@ export function EditUserForm({ user }: { user: User }) {
           </div>
         )}
       </div>
+
+      {/* Infrastructure assignments — only meaningful for regular users */}
+      {form.role === 'user' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Verification Provider
+            </label>
+            <select
+              value={form.verification_provider}
+              onChange={e => set('verification_provider', e.target.value)}
+              className="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="exotel">Exotel</option>
+              <option value="vobiz">Vobiz</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Used for verification campaigns</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              AI Agent Engine
+            </label>
+            <select
+              value={form.agent_engine}
+              onChange={e => set('agent_engine', e.target.value)}
+              className="w-full rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="vapi">VAPI (~₹70 / call)</option>
+              <option value="pipecat">Pipecat (~₹10 / call)</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Used for AI agent campaigns</p>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
