@@ -26,7 +26,16 @@ export async function POST(req: NextRequest) {
 
   console.log('[Recording webhook] call_record_id:', callRecordId, 'body:', JSON.stringify(body));
 
+  // Vobiz nests the recording data inside a stringified "response" field
+  let inner: Record<string, any> = {};
+  if (typeof body.response === 'string') {
+    try { inner = JSON.parse(body.response); } catch {}
+  } else if (typeof body.response === 'object' && body.response) {
+    inner = body.response;
+  }
+
   const recordingUrl: string =
+    inner.record_url ?? inner.RecordUrl ?? inner.recording_url ??
     body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ??
     body.record_url ?? body.RecordFile ?? body.record_file ?? '';
 

@@ -38,7 +38,7 @@ async function downloadRecording(url: string, provider: Provider): Promise<Buffe
 async function transcribeWithSarvam(audioBuffer: Buffer): Promise<string> {
   const fd = new FormData();
   fd.append('file', audioBuffer, { filename: 'recording.wav', contentType: 'audio/wav' });
-  fd.append('model', 'saarika:v2');
+  fd.append('model', 'saarika:v2.5');
   fd.append('language_code', 'unknown');
 
   const res = await fetch('https://api.sarvam.ai/speech-to-text', {
