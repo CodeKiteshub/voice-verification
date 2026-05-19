@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCampaigns, createCampaign, updateCampaign, getSetting, getUserById } from '@/lib/db';
+import { getCampaigns, createCampaign, updateCampaign, getSetting } from '@/lib/db';
 import { requireApiSession } from '@/lib/auth';
 import type { AgentConfig, CampaignType, Provider } from '@/lib/types';
 
@@ -45,14 +45,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Single user lookup — shared for both engine resolution and provider resolution.
-  const campaignUser = await getUserById(session!.userId);
-
   // Resolve the actual CampaignType.
-  // 'agent' → 'agent-vapi' or 'agent-pipecat' based on user's assigned agent_engine.
+  // 'agent' → 'agent-vapi' or 'agent-pipecat' based on the global agent_engine setting.
   let type: CampaignType;
   if (rawType === 'agent') {
-    const engine = campaignUser?.agent_engine ?? (await getSetting('agent_engine')) ?? 'vapi';
+    const engine = (await getSetting('agent_engine')) ?? 'vapi';
     type = engine === 'pipecat' ? 'agent-pipecat' : 'agent-vapi';
   } else {
     type = 'verification';
@@ -97,12 +94,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Resolve telephony provider from user profile.
-  // Agent campaigns: VAPI uses its own number; Pipecat uses user's verification_provider.
+  // Resolve telephony provider from global setting.
   // Provider from body is only honoured if explicitly passed (admin direct-API usage).
   const activeProvider: Provider = provider
     ? (provider as Provider)
-    : ((campaignUser?.verification_provider ?? (await getSetting('active_provider')) ?? 'exotel') as Provider);
+    : (((await getSetting('active_provider')) ?? 'exotel') as Provider);
 
   const campaign = await createCampaign({
     user_id: session!.userId,

@@ -30,24 +30,11 @@ export function verifyExotelWebhook(req: NextRequest, rawBody: string): boolean 
 }
 
 /**
- * Verify Vobiz webhook signature.
- * Vobiz signs payloads with HMAC-SHA256 using the auth token.
- * Header: X-Vobiz-Signature (base64-encoded)
- * Skip in development to allow local testing without a real signature.
+ * Vobiz does not sign incoming webhooks — always allow.
+ * Security relies on the unique call_record_id embedded in each webhook URL.
  */
-export function verifyVobizWebhook(req: NextRequest, rawBody: string): boolean {
-  if (process.env.NODE_ENV !== 'production') return true;
-  const signature = req.headers.get('X-Vobiz-Signature');
-  if (!signature) return false;
-  const expected = crypto
-    .createHmac('sha256', process.env.VOBIZ_AUTH_TOKEN!)
-    .update(rawBody)
-    .digest('base64');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+export function verifyVobizWebhook(_req: NextRequest, _rawBody: string): boolean {
+  return true;
 }
 
 /**
