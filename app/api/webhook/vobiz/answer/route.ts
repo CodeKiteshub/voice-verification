@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
   const greetingUrl    = `${base}/api/tts/${campaignId}/greeting`;
   const questionUrl    = `${base}/api/tts/${campaignId}`;
   const afterRecordUrl = `${base}/api/webhook/vobiz/after-record?call_record_id=${callRecordId}`;
-  const recordingCbUrl = `${base}/api/webhook/vobiz/recording?call_record_id=${callRecordId}`;
 
   const campaign = await getCampaignById(campaignId);
   const hasGreeting = !!campaign?.greeting?.trim();
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
   <Wait length="1"/>
 ${hasGreeting ? `  <Play>${greetingUrl}</Play>\n` : ''
 }  <Play>${questionUrl}</Play>
-  <Record recordSession="true" callbackUrl="${recordingCbUrl}" callbackMethod="POST" maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
+  <Record maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
 </Response>`;
 
   return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
