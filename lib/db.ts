@@ -95,6 +95,21 @@ export async function initSettings(): Promise<void> {
       )
     )
   );
+
+  // Auto-correct deprecated Sarvam voices
+  const VALID_VOICES = new Set([
+    'anushka','abhilash','manisha','vidya','arya','karun','hitesh',
+    'aditya','ritu','priya','neha','rahul','pooja','rohan','simran',
+    'kavya','amit','dev','ishita','shreya','taran','varun','manan',
+    'sumit','roopa','kabir','aayan','shubh','ashutosh','advait',
+    'anand','tanya','tarun','sunny','mani','gokul','vijay','shruti',
+    'suhani','mohit','kavitha','rehan','soham','rupali',
+  ]);
+  const current = await c.findOne({ key: 'tts_voice' });
+  if (current && !VALID_VOICES.has(current.value)) {
+    await c.updateOne({ key: 'tts_voice' }, { $set: { value: 'anushka' } });
+    console.warn(`[initSettings] Corrected invalid tts_voice "${current.value}" → "anushka"`);
+  }
 }
 
 /** Returns all settings as a flat key→value record */

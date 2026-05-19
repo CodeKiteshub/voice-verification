@@ -7,7 +7,8 @@ export const exotelProvider: TelephonyProvider = {
       EXOTEL_ACCOUNT_SID, EXOTEL_CALLER_ID, WEBHOOK_BASE_URL,
     } = process.env;
 
-    const url = `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@${EXOTEL_SUBDOMAIN}/v1/Accounts/${EXOTEL_ACCOUNT_SID}/Calls.json`;
+    const url = `https://${EXOTEL_SUBDOMAIN}/v1/Accounts/${EXOTEL_ACCOUNT_SID}/Calls.json`;
+    const creds = Buffer.from(`${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}`).toString('base64');
 
     const body = new URLSearchParams({
       From: EXOTEL_CALLER_ID!,
@@ -21,7 +22,10 @@ export const exotelProvider: TelephonyProvider = {
     const res = await fetch(url, {
       method: 'POST',
       body,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${creds}`,
+      },
     });
 
     if (!res.ok) throw new Error(`Exotel error ${res.status}: ${await res.text()}`);
