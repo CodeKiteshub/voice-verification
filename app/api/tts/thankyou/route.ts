@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getSetting } from '@/lib/db';
 import { addSubtleNoise } from '@/lib/audio/noise';
+import { generateTTS } from '@/lib/services/tts-generate';
 
 const TEXT = 'Thank you for your response. Goodbye.';
 
-// In-process cache: voice → Buffer. Survives across requests within the same server instance.
-// Eliminates the Sarvam round-trip on every call — first request warms it, all subsequent
-// calls return instantly. Cleared when voice setting changes (cache key = voice ID).
 const audioCache = new Map<string, Buffer>();
 
 export async function GET() {
   const voice = (await getSetting('tts_voice')) ?? 'anushka';
 
-  // Return cached buffer immediately if available
   const cached = audioCache.get(voice);
   if (cached) {
     return new NextResponse(new Uint8Array(cached), {
@@ -26,39 +23,13 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch('https://api.sarvam.ai/text-to-speech', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-subscription-key': process.env.SARVAM_API_KEY!,
-      },
-      body: JSON.stringify({
-        inputs: [TEXT],
-        target_language_code: 'en-IN',
-        speaker: voice,
-        pitch: 0,
-        pace: 1.0,
-        loudness: 1.5,
-        speech_sample_rate: 8000,
-        enable_preprocessing: true,
-        model: 'bulbul:v2',
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[TTS/thankyou] Sarvam error ${res.status}: ${err}`);
-      throw new Error(`Sarvam TTS failed: ${res.status}`);
+    const { audioBase64, usedVoice } = await generateTTS(TEXT, voice);
+    if (usedVoice !== voice) {
+      console.warn(`[TTS/thankyou] Voice "${voice}" failed, fell back to "${usedVoice}"`);
     }
 
-    const data = await res.json();
-    const audioBase64: string = data.audios?.[0] ?? '';
-    if (!audioBase64) throw new Error('No audio returned');
-
     const audioBuffer = addSubtleNoise(Buffer.from(audioBase64, 'base64'));
-
-    // Warm the cache for this voice
-    audioCache.set(voice, audioBuffer);
+    audioCache.set(usedVoice, audioBuffer);
 
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {

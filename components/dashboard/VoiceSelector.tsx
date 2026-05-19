@@ -4,14 +4,14 @@ import { Play, Square, Check } from 'lucide-react';
 
 export const VOICES = [
   { id: 'anushka',  name: 'Anushka',  gender: 'F' },
-  { id: 'meera',    name: 'Meera',    gender: 'F' },
-  { id: 'pavithra', name: 'Pavithra', gender: 'F' },
-  { id: 'maitreyi', name: 'Maitreyi', gender: 'F' },
-  { id: 'diya',     name: 'Diya',     gender: 'F' },
-  { id: 'karan',    name: 'Karan',    gender: 'M' },
-  { id: 'arvind',   name: 'Arvind',   gender: 'M' },
-  { id: 'amol',     name: 'Amol',     gender: 'M' },
-  { id: 'arjun',    name: 'Arjun',    gender: 'M' },
+  { id: 'manisha',  name: 'Manisha',  gender: 'F' },
+  { id: 'vidya',    name: 'Vidya',    gender: 'F' },
+  { id: 'arya',     name: 'Arya',     gender: 'F' },
+  { id: 'priya',    name: 'Priya',    gender: 'F' },
+  { id: 'abhilash', name: 'Abhilash', gender: 'M' },
+  { id: 'karun',    name: 'Karun',    gender: 'M' },
+  { id: 'hitesh',   name: 'Hitesh',   gender: 'M' },
+  { id: 'rahul',    name: 'Rahul',    gender: 'M' },
 ];
 
 export function VoiceSelector({ initial }: { initial: string }) {
