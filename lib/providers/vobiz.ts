@@ -18,6 +18,7 @@ export const vobizProvider: TelephonyProvider = {
         answer_method: 'POST',
         hangup_url: `${WEBHOOK_BASE_URL}/api/webhook/vobiz/hangup?call_record_id=${callRecordId}`,
         hangup_method: 'POST',
+        record: true,
         time_limit: 120,
       }),
     });
