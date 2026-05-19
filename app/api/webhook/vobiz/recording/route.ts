@@ -1,8 +1,12 @@
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyVobizWebhook } from '@/lib/auth';
-import { updateCallRecord, getSetting } from '@/lib/db';
-import { runStt } from '@/lib/services/stt';
+import { updateCallRecord } from '@/lib/db';
 
+// Receives the full call recording URL from Vobiz (triggered by record_url in the API call).
+// This recording captures BOTH the agent TTS and the user's voice — it replaces the
+// user-voice-only recording saved by after-record so the admin hears the full conversation.
+// STT is NOT re-run here — after-record already ran it on the user-voice-only recording.
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   if (!verifyVobizWebhook(req, rawBody)) {
@@ -11,7 +15,6 @@ export async function POST(req: NextRequest) {
 
   const callRecordId = new URL(req.url).searchParams.get('call_record_id') ?? '';
 
-  // Parse body
   let body: Record<string, any> = {};
   const contentType = req.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
@@ -21,27 +24,18 @@ export async function POST(req: NextRequest) {
     body = Object.fromEntries(fd.entries());
   }
 
-  // Plivo/Vobiz sends: RecordUrl, RecordingID, RecordingDuration, CallUUID
+  // Vobiz sends: RecordUrl, RecordingID, RecordingDuration, CallUUID
   const recordingUrl: string = body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ?? '';
-  const duration: number = parseInt(body.RecordingDuration ?? body.Duration ?? body.duration ?? '0');
 
   if (callRecordId && recordingUrl) {
-    await updateCallRecord(callRecordId, {
-      recording_url: recordingUrl,
-      recording_proxied: true, // Vobiz recordings require auth — always proxy
-      duration_seconds: duration || undefined,
-      status: 'answered',
+    after(async () => {
+      await updateCallRecord(callRecordId, {
+        // Overwrite with full call recording (both sides) for the audio player
+        recording_url: recordingUrl,
+        recording_proxied: true,
+      });
     });
-
-    const sttEnabled = await getSetting('stt_enabled');
-    if (sttEnabled !== 'false') {
-      runStt(callRecordId, recordingUrl, 'vobiz').catch(console.error);
-    }
   }
 
-  // Return valid XML so Vobiz doesn't retry (when used as action URL)
-  return new NextResponse(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`,
-    { headers: { 'Content-Type': 'text/xml' } }
-  );
+  return new NextResponse('OK');
 }

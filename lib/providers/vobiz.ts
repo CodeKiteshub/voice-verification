@@ -18,7 +18,11 @@ export const vobizProvider: TelephonyProvider = {
         answer_method: 'POST',
         hangup_url: `${WEBHOOK_BASE_URL}/api/webhook/vobiz/hangup?call_record_id=${callRecordId}`,
         hangup_method: 'POST',
+        // record: true captures full call (agent TTS + user voice mixed).
+        // record_url tells Vobiz where to POST the recording URL when ready.
         record: true,
+        record_url: `${WEBHOOK_BASE_URL}/api/webhook/vobiz/recording?call_record_id=${callRecordId}`,
+        record_url_method: 'POST',
         time_limit: 120,
       }),
     });

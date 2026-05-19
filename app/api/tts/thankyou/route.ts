@@ -4,8 +4,27 @@ import { addSubtleNoise } from '@/lib/audio/noise';
 
 const TEXT = 'Thank you for your response. Goodbye.';
 
+// In-process cache: voice → Buffer. Survives across requests within the same server instance.
+// Eliminates the Sarvam round-trip on every call — first request warms it, all subsequent
+// calls return instantly. Cleared when voice setting changes (cache key = voice ID).
+const audioCache = new Map<string, Buffer>();
+
 export async function GET() {
-  const voice = await getSetting('tts_voice');
+  const voice = (await getSetting('tts_voice')) ?? 'anushka';
+
+  // Return cached buffer immediately if available
+  const cached = audioCache.get(voice);
+  if (cached) {
+    return new NextResponse(new Uint8Array(cached), {
+      headers: {
+        'Content-Type': 'audio/wav',
+        'Content-Length': String(cached.length),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  }
+
   try {
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
@@ -16,7 +35,7 @@ export async function GET() {
       body: JSON.stringify({
         inputs: [TEXT],
         target_language_code: 'en-IN',
-        speaker: voice ?? 'anushka',
+        speaker: voice,
         pitch: 0,
         pace: 1.0,
         loudness: 1.5,
@@ -37,6 +56,10 @@ export async function GET() {
     if (!audioBase64) throw new Error('No audio returned');
 
     const audioBuffer = addSubtleNoise(Buffer.from(audioBase64, 'base64'));
+
+    // Warm the cache for this voice
+    audioCache.set(voice, audioBuffer);
+
     return new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': 'audio/wav',
