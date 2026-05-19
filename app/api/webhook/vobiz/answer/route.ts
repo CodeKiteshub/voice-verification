@@ -13,16 +13,17 @@ export async function POST(req: NextRequest) {
   const callRecordId = sp.get('call_record_id') ?? '0';
   const base = process.env.WEBHOOK_BASE_URL;
 
-  const greetingUrl  = `${base}/api/tts/${campaignId}/greeting`;
-  const questionUrl  = `${base}/api/tts/${campaignId}`;
+  const greetingUrl    = `${base}/api/tts/${campaignId}/greeting`;
+  const questionUrl    = `${base}/api/tts/${campaignId}`;
   const afterRecordUrl = `${base}/api/webhook/vobiz/after-record?call_record_id=${callRecordId}`;
+  const recordingCbUrl = `${base}/api/webhook/vobiz/recording?call_record_id=${callRecordId}`;
 
-  // Check if campaign has a greeting set
   const campaign = await getCampaignById(campaignId);
   const hasGreeting = !!campaign?.greeting?.trim();
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Record recordSession="true" redirect="false" callbackUrl="${recordingCbUrl}" callbackMethod="POST"/>
   <Wait length="1"/>
 ${hasGreeting ? `  <Play>${greetingUrl}</Play>\n` : ''
 }  <Play>${questionUrl}</Play>
