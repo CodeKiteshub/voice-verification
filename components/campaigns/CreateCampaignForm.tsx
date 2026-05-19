@@ -29,6 +29,7 @@ export function CreateCampaignForm() {
   const router = useRouter();
   const [campaignType, setCampaignType] = useState<CampaignIntent>('verification');
   const [name,         setName]         = useState('');
+  const [greeting,     setGreeting]     = useState('');
   const [question,     setQuestion]     = useState('');
   const [agentConfig,  setAgentConfig]  = useState<AgentConfig>(defaultAgentConfig);
   const [sttEnabled,   setSttEnabled]   = useState(true);
@@ -50,13 +51,15 @@ export function CreateCampaignForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          // Send the simplified type; server maps 'agent' → 'agent-vapi' or 'agent-pipecat'
-          // based on the user's assigned agent_engine (set by admin).
           campaign_type: campaignType,
           ...(isAgent
             ? { agent_config: agentConfig }
-            : { question, stt_enabled: sttEnabled, tts_voice: ttsVoice }),
-          // No provider sent — server derives it from user's verification_provider setting
+            : {
+                greeting: greeting.trim() || undefined,
+                question,
+                stt_enabled: sttEnabled,
+                tts_voice: ttsVoice,
+              }),
         }),
       });
       if (!res.ok) {
@@ -125,7 +128,23 @@ export function CreateCampaignForm() {
         <>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">
-              Question <span className="text-gray-400 font-normal">(spoken to the user)</span>
+              Greeting <span className="text-gray-400 font-normal">(optional — plays first when user picks up)</span>
+            </label>
+            <textarea
+              value={greeting} onChange={e => setGreeting(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-indigo-500 focus:ring-indigo-500"
+              placeholder="Hello! This is an automated call from Zeftrosoft. We have a quick question for you."
+            />
+            <p className="text-xs text-gray-400">
+              Played as soon as the user answers. If left blank, the question plays directly.
+              If the user does not respond within 3 seconds, the call ends automatically.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">
+              Question <span className="text-gray-400 font-normal">(spoken after greeting)</span>
             </label>
             <textarea
               required value={question} onChange={e => setQuestion(e.target.value)}

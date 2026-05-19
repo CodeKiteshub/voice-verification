@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   const {
     name,
     question,
+    greeting,
     provider,
     stt_enabled,
     tts_voice,
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
     user_id: session!.userId,
     name,
     question: type === 'verification' ? (question ?? '') : '',
+    ...(greeting?.trim() ? { greeting: greeting.trim() } : {}),
     provider: activeProvider,
     stt_enabled: stt_enabled ?? (await getSetting('stt_enabled')) !== 'false',
     tts_voice: tts_voice ?? (await getSetting('tts_voice')) ?? 'anushka',

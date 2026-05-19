@@ -60,6 +60,7 @@ export interface Campaign {
   user_id: string;
   name: string;
   question: string;                   // Verification campaigns; empty string for agent campaigns
+  greeting?: string;                  // Optional greeting played before the question
   campaign_type: CampaignType;        // Defaults to 'verification' for existing docs
   agent_config?: AgentConfig;         // Only present when campaign_type starts with 'agent-'
   vapi_assistant_id?: string;         // Internal — not exposed to UI
@@ -98,6 +99,9 @@ export interface CallRecord {
   status: CallStatus;
   recording_url?: string;
   recording_proxied: boolean;
+
+  // Recording fields
+  stt_recording_url?: string;    // User-voice-only recording (used for STT, from <Record> verb)
 
   // Transcription fields
   transcript?: string;           // Verification: raw STT; VAPI: VAPI-formatted; legacy

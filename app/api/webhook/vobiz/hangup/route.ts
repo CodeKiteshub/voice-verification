@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
     completed_at: new Date().toISOString(),
   };
 
-  // If full call recording arrived here (and no segment recording saved yet), save it
+  // Full call recording from Vobiz record:true — both agent TTS + user voice mixed.
+  // Always overwrite recording_url so the admin hears the full conversation in the player.
   if (fullRecordingUrl) {
     update.recording_url = fullRecordingUrl;
     update.recording_proxied = true;

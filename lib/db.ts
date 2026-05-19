@@ -203,6 +203,7 @@ export async function createCampaign(data: {
   user_id: string;
   name: string;
   question: string;
+  greeting?: string;
   provider: Provider;
   stt_enabled: boolean;
   tts_voice?: string;
@@ -222,6 +223,7 @@ export async function createCampaign(data: {
     status: 'draft',
     created_at: new Date().toISOString(),
   };
+  if (data.greeting)     doc.greeting     = data.greeting;
   if (data.agent_config) doc.agent_config = data.agent_config;
   if (data.vapi_status)  doc.vapi_status  = data.vapi_status;
 
@@ -270,6 +272,7 @@ export async function updateCampaign(
   data: Partial<{
     name: string;
     question: string;
+    greeting: string;
     provider: Provider;
     stt_enabled: boolean;
     tts_voice: string;

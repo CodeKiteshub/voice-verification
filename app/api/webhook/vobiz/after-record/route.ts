@@ -4,7 +4,8 @@ import { updateCallRecord, getSetting } from '@/lib/db';
 import { runStt } from '@/lib/services/stt';
 
 // Called by Vobiz via <Record action="..."> after user finishes speaking.
-// Saves the recording segment (for STT), then returns XML to play thank-you and hang up.
+// If user responded: saves recording, runs STT, plays thank-you, hangs up.
+// If user said nothing (timeout with no audio): hangs up immediately, no thank-you.
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   if (!verifyVobizWebhook(req, rawBody)) {
@@ -26,9 +27,26 @@ export async function POST(req: NextRequest) {
   const recordingUrl: string = body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ?? '';
   const duration: number = parseInt(body.RecordingDuration ?? body.Duration ?? body.duration ?? '0');
 
-  if (callRecordId && recordingUrl) {
+  // No recording = user did not respond — hang up silently, no thank-you
+  if (!recordingUrl) {
+    if (callRecordId) {
+      await updateCallRecord(callRecordId, {
+        status: 'completed',
+        intent: 'UNCLEAR',
+        completed_at: new Date().toISOString(),
+      });
+    }
+    return new NextResponse(
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`,
+      { headers: { 'Content-Type': 'text/xml' } }
+    );
+  }
+
+  // User responded — save user-voice recording for STT + playback fallback
+  if (callRecordId) {
     await updateCallRecord(callRecordId, {
-      recording_url: recordingUrl,
+      recording_url: recordingUrl,       // fallback for audio player until full recording arrives
+      stt_recording_url: recordingUrl,   // user-voice-only, used by STT
       recording_proxied: true,
       duration_seconds: duration || undefined,
       status: 'answered',
@@ -40,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Return XML: play thank-you in Sarvam voice, then hang up
+  // Play thank-you then hang up
   const thankYouUrl = `${process.env.WEBHOOK_BASE_URL}/api/tts/thankyou`;
   return new NextResponse(
     `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${thankYouUrl}</Play><Hangup/></Response>`,

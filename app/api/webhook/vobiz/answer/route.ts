@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyVobizWebhook } from '@/lib/auth';
+import { getCampaignById } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -10,16 +11,21 @@ export async function POST(req: NextRequest) {
   const sp = new URL(req.url).searchParams;
   const campaignId = sp.get('campaign_id') ?? '';
   const callRecordId = sp.get('call_record_id') ?? '0';
+  const base = process.env.WEBHOOK_BASE_URL;
 
-  const ttsUrl = `${process.env.WEBHOOK_BASE_URL}/api/tts/${campaignId}`;
-  // action: Vobiz POSTs recording data here after user stops speaking,
-  // then follows the XML response (plays thank-you + hangs up)
-  const afterRecordUrl = `${process.env.WEBHOOK_BASE_URL}/api/webhook/vobiz/after-record?call_record_id=${callRecordId}`;
+  const greetingUrl  = `${base}/api/tts/${campaignId}/greeting`;
+  const questionUrl  = `${base}/api/tts/${campaignId}`;
+  const afterRecordUrl = `${base}/api/webhook/vobiz/after-record?call_record_id=${callRecordId}`;
+
+  // Check if campaign has a greeting set
+  const campaign = await getCampaignById(campaignId);
+  const hasGreeting = !!campaign?.greeting?.trim();
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Wait length="2"/>
-  <Play>${ttsUrl}</Play>
+  <Wait length="1"/>
+${hasGreeting ? `  <Play>${greetingUrl}</Play>\n` : ''
+}  <Play>${questionUrl}</Play>
   <Record maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
 </Response>`;
 
