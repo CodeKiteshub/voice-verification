@@ -15,6 +15,10 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authHeader = req.headers.get('Authorization') ?? '(none)';
+  const envSecret = process.env.INTERNAL_API_SECRET ?? '(not set)';
+  console.log('[call-config] Auth header:', authHeader.slice(0, 20) + '...', 'Env secret starts:', envSecret.slice(0, 8) + '...');
+
   if (!verifyInternalApi(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
