@@ -111,10 +111,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
             });
             providerCallId = result.providerCallId;
           } else if (campaignType === 'agent-pipecat') {
-            // Exotel Voicebot Applet → Pipecat WebSocket
-            const { initiateExotelVoicebotCall } = await import('@/lib/providers/pipecat');
+            // Vobiz bidirectional WebSocket → Pipecat
+            const { initiateVobizPipecatCall } = await import('@/lib/providers/pipecat');
             const settings = await getAllSettings();
-            const result = await initiateExotelVoicebotCall({
+            const result = await initiateVobizPipecatCall({
               phoneNumber: contact.phone,
               callRecordId: record.id,
               pipecatServerUrl: settings.pipecat_server_url,
