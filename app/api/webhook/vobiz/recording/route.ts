@@ -24,17 +24,22 @@ export async function POST(req: NextRequest) {
     body = Object.fromEntries(fd.entries());
   }
 
-  // Vobiz sends: RecordUrl, RecordingID, RecordingDuration, CallUUID
-  const recordingUrl: string = body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ?? '';
+  console.log('[Recording webhook] call_record_id:', callRecordId, 'body:', JSON.stringify(body));
+
+  const recordingUrl: string =
+    body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ??
+    body.record_url ?? body.RecordFile ?? body.record_file ?? '';
 
   if (callRecordId && recordingUrl) {
     after(async () => {
       await updateCallRecord(callRecordId, {
-        // Overwrite with full call recording (both sides) for the audio player
         recording_url: recordingUrl,
         recording_proxied: true,
       });
+      console.log('[Recording webhook] Saved full recording for', callRecordId);
     });
+  } else {
+    console.warn('[Recording webhook] Missing data — callRecordId:', callRecordId, 'recordingUrl:', recordingUrl);
   }
 
   return new NextResponse('OK');

@@ -20,11 +20,14 @@ export async function POST(req: NextRequest) {
     body = Object.fromEntries(fd.entries());
   }
 
+  console.log('[Hangup webhook] call_record_id:', callRecordId, 'body:', JSON.stringify(body));
+
   const callUuid: string = body.CallUUID ?? body.call_uuid ?? '';
   const duration: number = parseInt(body.Duration ?? '0');
   const cause: string = body.HangupCause ?? '';
-  // Vobiz sends full call recording URL in hangup when record=true on the outbound call
-  const fullRecordingUrl: string = body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ?? '';
+  const fullRecordingUrl: string =
+    body.RecordUrl ?? body.RecordingUrl ?? body.recording_url ??
+    body.record_url ?? body.RecordFile ?? body.record_file ?? '';
 
   const status =
     cause === 'NORMAL_CLEARING' ? 'completed' :
