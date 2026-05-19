@@ -23,11 +23,10 @@ export async function POST(req: NextRequest) {
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Record recordSession="true" redirect="false" callbackUrl="${recordingCbUrl}" callbackMethod="POST"/>
   <Wait length="1"/>
 ${hasGreeting ? `  <Play>${greetingUrl}</Play>\n` : ''
 }  <Play>${questionUrl}</Play>
-  <Record maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
+  <Record recordSession="true" callbackUrl="${recordingCbUrl}" callbackMethod="POST" maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
 </Response>`;
 
   return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
