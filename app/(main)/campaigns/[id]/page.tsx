@@ -12,8 +12,8 @@ function voiceLabel(id: string) {
 
 const TYPE_LABELS: Record<string, string> = {
   verification: 'Verification',
-  'agent-vapi': 'AI Agent · VAPI',
-  'agent-pipecat': 'AI Agent · Pipecat',
+  'agent-vapi': 'AI Agent · Cloud AI',
+  'agent-pipecat': 'AI Agent · Custom AI',
 };
 
 export default function CampaignDetailPage() {
