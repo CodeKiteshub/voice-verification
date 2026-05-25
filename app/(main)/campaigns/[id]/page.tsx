@@ -5,6 +5,7 @@ import type { AgentConfig, Campaign, Contact } from '@/lib/types';
 import { Phone, Trash2, Pencil, X, Check, Clock, AlertCircle } from 'lucide-react';
 import { VoiceDropdown, VOICES } from '@/components/settings/VoiceDropdown';
 import { AgentConfigForm } from '@/components/campaigns/AgentConfigForm';
+import { AddContactsPanel } from '@/components/campaigns/AddContactsPanel';
 
 function voiceLabel(id: string) {
   return VOICES.find(v => v.id === id)?.label ?? id;
@@ -33,6 +34,12 @@ export default function CampaignDetailPage() {
   const [editVoice,    setEditVoice]    = useState('anushka');
   const [editAConfig,  setEditAConfig]  = useState<AgentConfig | null>(null);
   const [saving,       setSaving]       = useState(false);
+
+  const refreshContacts = () => {
+    fetch(`/api/campaigns/${id}/contacts`)
+      .then(r => r.json())
+      .then(ct => setContacts(ct));
+  };
 
   useEffect(() => {
     Promise.all([
@@ -284,7 +291,7 @@ export default function CampaignDetailPage() {
           Contacts <span className="text-gray-400 font-normal">({contacts.length})</span>
         </h3>
         {contacts.length === 0 ? (
-          <p className="text-gray-400 text-sm">No contacts added</p>
+          <p className="text-gray-400 text-sm">No contacts added yet</p>
         ) : (
           <ul className="divide-y divide-gray-100 max-h-52 overflow-y-auto">
             {contacts.map(c => (
@@ -295,6 +302,7 @@ export default function CampaignDetailPage() {
             ))}
           </ul>
         )}
+        <AddContactsPanel campaignId={id} onAdded={refreshContacts} />
       </div>
 
       {/* ── Errors / Result ── */}
