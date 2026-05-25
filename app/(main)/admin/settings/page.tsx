@@ -14,12 +14,12 @@ const SECTIONS = [
   {
     title: 'AI Agent Engine',
     fields: [
-      { key: 'agent_engine', label: 'Default Agent Engine', type: 'select', options: [{ value: 'vapi', label: 'VAPI (managed)' }, { value: 'pipecat', label: 'Pipecat (custom, cheaper)' }] },
+      { key: 'agent_engine', label: 'Default Agent Engine', type: 'select', options: [{ value: 'vapi', label: 'V-Engine (managed cloud AI)' }, { value: 'pipecat', label: 'Pipecat (custom, cheaper)' }] },
     ],
   },
   {
-    title: 'VAPI Configuration',
-    description: 'Required for agent-vapi campaigns. Get these from app.vapi.ai.',
+    title: 'V-Engine Configuration',
+    description: 'Required for Cloud AI agent campaigns. Credentials from the V-Engine provider dashboard.',
     fields: [
       { key: 'vapi_api_key', label: 'VAPI API Key', type: 'password', placeholder: '…' },
       { key: 'vapi_phone_number_id', label: 'Phone Number ID', type: 'text', placeholder: 'phone_number_id from VAPI dashboard' },
@@ -94,7 +94,7 @@ export default function AdminSettingsPage() {
     <div className="max-w-2xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Platform configuration — VAPI keys, Pipecat server, telephony defaults.</p>
+        <p className="text-sm text-gray-500 mt-1">Platform configuration — V-Engine credentials, Pipecat server, telephony defaults.</p>
       </div>
 
       {error && (

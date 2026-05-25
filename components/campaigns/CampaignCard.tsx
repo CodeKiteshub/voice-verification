@@ -3,8 +3,8 @@ import type { Campaign } from '@/lib/types';
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   verification: { label: 'Verification', color: 'bg-gray-100 text-gray-600' },
-  'agent-vapi': { label: 'AI Agent · VAPI', color: 'bg-violet-100 text-violet-700' },
-  'agent-pipecat': { label: 'AI Agent · Pipecat', color: 'bg-emerald-100 text-emerald-700' },
+  'agent-vapi': { label: 'AI Agent · Cloud AI', color: 'bg-violet-100 text-violet-700' },
+  'agent-pipecat': { label: 'AI Agent · Custom AI', color: 'bg-emerald-100 text-emerald-700' },
 };
 
 const VAPI_STATUS_BADGE: Record<string, { label: string; color: string }> = {
@@ -33,7 +33,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeBadge.color}`}>
             {typeBadge.label}
           </span>
-          {/* VAPI provisioning status */}
+          {/* AI engine provisioning status */}
           {type === 'agent-vapi' && vapiStatus && vapiStatus !== 'provisioned' && (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VAPI_STATUS_BADGE[vapiStatus]?.color ?? ''}`}>
               {VAPI_STATUS_BADGE[vapiStatus]?.label ?? vapiStatus}

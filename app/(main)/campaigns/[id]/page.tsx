@@ -159,19 +159,19 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {/* ── VAPI provisioning status banner ── */}
+      {/* ── AI engine provisioning status banner ── */}
       {campaign.campaign_type === 'agent-vapi' && (
         <>
           {campaign.vapi_status === 'pending' && (
             <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
               <Clock className="w-4 h-4 shrink-0" />
-              Provisioning VAPI assistant… This usually takes a few seconds. Refresh to check.
+              Setting up AI engine… This usually takes a few seconds. Refresh to check.
             </div>
           )}
           {campaign.vapi_status === 'failed' && (
             <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              VAPI assistant provisioning failed. Check Admin → Settings for VAPI credentials, then delete and recreate this campaign.
+              AI engine setup failed. Please contact your administrator, then delete and recreate this campaign.
             </div>
           )}
         </>
@@ -315,7 +315,7 @@ export default function CampaignDetailPage() {
         onClick={trigger}
         disabled={triggering || contacts.length === 0 || vapiPending}
         className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors text-sm"
-        title={vapiPending ? 'VAPI assistant is still being provisioned' : undefined}
+        title={vapiPending ? 'AI engine is still being set up, please wait a moment' : undefined}
       >
         <Phone className="w-4 h-4" />
         {triggering

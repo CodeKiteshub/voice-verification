@@ -60,7 +60,7 @@ export function CallCard({ call: initialCall }: { call: CallRecord }) {
             </span>
             <p className="text-xs text-gray-400">
               {call.provider === 'exotel' ? 'Model EX' : call.provider === 'vobiz' ? 'Model VO' : call.provider}
-              {call.agent_engine ? ` · ${call.agent_engine.toUpperCase()}` : ''}
+              {call.agent_engine ? ` · ${call.agent_engine === 'vapi' ? 'Cloud AI' : call.agent_engine === 'pipecat' ? 'Custom AI' : call.agent_engine}` : ''}
               {' · '}{new Date(call.called_at).toLocaleString()}
               {call.duration_seconds ? ` · ${call.duration_seconds}s` : ''}
             </p>
