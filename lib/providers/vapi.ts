@@ -53,24 +53,38 @@ async function buildAssistantPayload(
   const systemPrompt = buildSystemPrompt(agentConfig);
   const firstMessage = buildFirstMessage(agentConfig);
 
+  // Voice, model and transcriber come from admin settings — no redeploy needed.
+  // Defaults match the user's hand-crafted VAPI assistant config.
+  const voiceProvider   = settings.vapi_voice_provider?.trim()       || '11labs';
+  const voiceId         = settings.vapi_voice_id?.trim()             || '2BsEFcU7jUhLaUwV4h7l';
+  const voiceModel      = settings.vapi_voice_model?.trim()          || '';
+  const llmProvider     = settings.vapi_llm_provider?.trim()         || 'openai';
+  const llmModel        = settings.vapi_llm_model?.trim()            || 'gpt-4o';
+  const transcriberLang = settings.vapi_transcriber_language?.trim() || 'en';
+
+  // Build the voice object — ElevenLabs needs extra fields (model, stability, similarityBoost)
+  const voiceObj: Record<string, unknown> = { provider: voiceProvider, voiceId };
+  if (voiceProvider === '11labs') {
+    if (voiceModel) voiceObj.model = voiceModel;
+    voiceObj.stability      = 0.5;
+    voiceObj.similarityBoost = 0.75;
+  }
+
   return {
     name: campaignName,
     firstMessage,
     model: {
-      provider: 'openai',
-      model: settings.vapi_llm_model || 'gpt-4o-mini',
+      provider: llmProvider,
+      model: llmModel,
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.7,
       maxTokens: 150,
     },
-    voice: {
-      provider: 'azure',
-      voiceId: settings.vapi_tts_voice || 'hi-IN-SwaraNeural',
-    },
+    voice: voiceObj,
     transcriber: {
       provider: 'deepgram',
       model: 'nova-3',
-      language: 'hi',
+      language: transcriberLang,
     },
     // End call when silence detected after N seconds
     silenceTimeoutSeconds: 30,
@@ -78,8 +92,10 @@ async function buildAssistantPayload(
     endCallMessage: 'Thank you for your time. Have a great day. Goodbye.',
     endCallPhrases: ['goodbye', 'bye', 'alvida', 'thank you bye'],
     // VAPI sends end-of-call-report to our webhook
-    serverUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook/vapi`,
-    serverUrlSecret: settings.vapi_webhook_secret || '',
+    server: {
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook/vapi`,
+      ...(settings.vapi_webhook_secret ? { secret: settings.vapi_webhook_secret } : {}),
+    },
     analysisPlan: {
       // VAPI will auto-generate a summary + success evaluation
       summaryPrompt:

@@ -133,9 +133,14 @@ export interface Settings {
   agent_engine: AgentEngine;
   vapi_api_key: string;
   vapi_phone_number_id: string;
-  vapi_llm_model: string;
-  vapi_tts_voice: string;
   vapi_webhook_secret: string;
+  // Voice + model overrides for the auto-provisioned VAPI assistant
+  vapi_voice_provider: string;        // e.g. '11labs', 'azure', 'playht', 'openai'
+  vapi_voice_id: string;              // ElevenLabs voice ID or Azure voice name
+  vapi_voice_model: string;           // ElevenLabs model e.g. 'eleven_turbo_v2_5' (empty for Azure)
+  vapi_llm_provider: string;          // e.g. 'openai', 'anthropic', 'together-ai', 'groq'
+  vapi_llm_model: string;             // e.g. 'gpt-4o', 'gpt-4o-mini'
+  vapi_transcriber_language: string;  // e.g. 'en', 'hi', 'hi-en'
   pipecat_server_url: string;
   pipecat_tts_provider: string;
 }

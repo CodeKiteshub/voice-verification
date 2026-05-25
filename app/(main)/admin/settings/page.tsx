@@ -23,9 +23,13 @@ const SECTIONS = [
     fields: [
       { key: 'vapi_api_key', label: 'VAPI API Key', type: 'password', placeholder: '…' },
       { key: 'vapi_phone_number_id', label: 'Phone Number ID', type: 'text', placeholder: 'phone_number_id from VAPI dashboard' },
-      { key: 'vapi_llm_model', label: 'LLM Model', type: 'text', placeholder: 'gpt-4o-mini' },
-      { key: 'vapi_tts_voice', label: 'TTS Voice', type: 'text', placeholder: 'hi-IN-SwaraNeural' },
       { key: 'vapi_webhook_secret', label: 'Webhook Secret', type: 'password', placeholder: 'random 32-char string' },
+      { key: 'vapi_voice_provider', label: 'Voice Provider', type: 'text', placeholder: '11labs · azure · playht · openai' },
+      { key: 'vapi_voice_id', label: 'Voice ID', type: 'text', placeholder: 'ElevenLabs voice ID or Azure voice name' },
+      { key: 'vapi_voice_model', label: 'Voice Model', type: 'text', placeholder: 'e.g. eleven_turbo_v2_5 (ElevenLabs only, leave blank for Azure)' },
+      { key: 'vapi_llm_provider', label: 'LLM Provider', type: 'text', placeholder: 'openai · anthropic · together-ai · groq' },
+      { key: 'vapi_llm_model', label: 'LLM Model', type: 'text', placeholder: 'e.g. gpt-4o · gpt-4o-mini · claude-3-5-sonnet-20241022' },
+      { key: 'vapi_transcriber_language', label: 'Transcriber Language', type: 'text', placeholder: 'en · hi · hi-en (multilingual)' },
     ],
   },
   {
