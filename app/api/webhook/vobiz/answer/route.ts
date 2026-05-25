@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
 <Response>
   <Wait length="1"/>
 ${hasGreeting ? `  <Play>${greetingUrl}</Play>\n` : ''
-}  <Play>${questionUrl}</Play>
+}${hasGreeting ? '  <Wait length="1"/>\n' : ''}  <Play>${questionUrl}</Play>
+  <Wait length="1"/>
   <Record maxLength="15" finishOnKey="" playBeep="false" timeout="3" action="${afterRecordUrl}"/>
 </Response>`;
 

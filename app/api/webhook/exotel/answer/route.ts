@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyExotelWebhook } from '@/lib/auth';
+import { getCampaignById } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -10,13 +11,20 @@ export async function POST(req: NextRequest) {
   const sp = new URL(req.url).searchParams;
   const campaignId = sp.get('campaign_id') ?? '';
   const callRecordId = sp.get('call_record_id') ?? '0';
+  const campaign = await getCampaignById(campaignId);
 
-  const ttsUrl = `${process.env.WEBHOOK_BASE_URL}/api/tts/${campaignId}`;
+  const base = process.env.WEBHOOK_BASE_URL;
+  const greetingUrl = `${base}/api/tts/${campaignId}/greeting`;
+  const questionUrl = `${base}/api/tts/${campaignId}`;
   const recordingAction = `${process.env.WEBHOOK_BASE_URL}/api/webhook/exotel/recording?call_record_id=${callRecordId}`;
+  const hasGreeting = !!campaign?.greeting?.trim();
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${ttsUrl}</Play>
+${hasGreeting ? `  <Play>${greetingUrl}</Play>
+  <Pause length="1"/>
+` : ''}  <Play>${questionUrl}</Play>
+  <Pause length="1"/>
   <Record action="${recordingAction}" method="POST" maxLength="30" finishOnKey="#" playBeep="true" trim="trim-silence"/>
   <Say voice="woman" language="hi-IN">आपके जवाब के लिए धन्यवाद। अलविदा।</Say>
   <Hangup/>

@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   // Return XML immediately — Vobiz fetches + plays the thank-you URL while DB work runs in parallel
   const thankYouUrl = `${process.env.WEBHOOK_BASE_URL}/api/tts/thankyou`;
   return new NextResponse(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${thankYouUrl}</Play><Hangup/></Response>`,
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Wait length="1"/><Play>${thankYouUrl}</Play><Wait length="1"/><Hangup/></Response>`,
     { headers: { 'Content-Type': 'text/xml' } }
   );
 }
